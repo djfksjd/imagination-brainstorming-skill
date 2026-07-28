@@ -91,6 +91,7 @@
   "chosen": {
     "approach_id": "pre-written",
     "why": "It attacks the inverted premise directly: duties accrue all shift, so the handover should too, and the nurse's scarce ten minutes go to correction rather than recall. It keeps the legal record that killed the spoken-only option, and unlike the ward ledger it preserves a named person on both sides of every duty.",
+    "answers_failure_mode": "Skimming is the death this approach wrote down for itself, so the design has to make bulk acceptance impossible rather than discouraged: every line is accepted or amended one at a time by the nurse taking it on, and a line nobody touches stays open and appears on the next handover with its age showing. The bet is narrower than 'friction survives a busy ward' - it only has to survive eleven lines, and an untouched line costs the outgoing nurse a second conversation rather than nothing. What would falsify it: if the ageing lines are routinely cleared in a batch at the end of the week, the mechanism has failed and the ward should go back to the ledger.",
     "forbids": "It forbids composing a handover from scratch, and it forbids the state 'nothing to report' from being expressible without a name and a timestamp attached. Bulk acceptance of the draft is refused by design, which costs the ward real minutes on every shift and will be the first thing anyone asks to remove.",
     "impossible_now": "Passing a patient to the next shift with no statement about them at all becomes impossible; silence is no longer a valid handover state."
   },

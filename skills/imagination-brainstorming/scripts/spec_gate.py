@@ -417,6 +417,37 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 }[field]
                 failures.append(f"chosen.{field}: needs at least {mins[key]} units{hint}")
             check_padding(f"chosen.{field}", value, thresholds["min_distinct_ratio"], failures)
+        # The approach the session chose wrote down how it fails. Nothing read
+        # it: a mechanic whose own failure_mode said the group "either invents
+        # a tracker - restoring the artefact the frame removed - or lets the
+        # rule quietly lapse" passed here first try, without comment. The gate
+        # cannot judge whether a declared failure is fatal, or whether an
+        # answer to it is any good. It can require that the answer exists, is
+        # not the failure restated back, and is put in front of whoever reads
+        # the verdict next to the failure it answers.
+        declared = ""
+        if isinstance(approaches, list):
+            for a in approaches:
+                if isinstance(a, dict) and text_of(a.get("id")) == text_of(chosen.get("approach_id")):
+                    declared = text_of(a.get("failure_mode"))
+        answer = text_of(chosen.get("answers_failure_mode"))
+        if text_units(answer) < mins["answers_failure_mode"]:
+            failures.append(
+                f"chosen.answers_failure_mode: needs at least {mins['answers_failure_mode']} units - the "
+                f"chosen approach states how it fails ('{declared[:70]}...') and the concept has to say "
+                "what it does about that. A spec that declares its own collapse and moves on is worse "
+                "than one that never thought about it"
+            )
+        check_padding("chosen.answers_failure_mode", answer, thresholds["min_distinct_ratio"], failures)
+        if declared and answer:
+            warnings.append(
+                f"the chosen approach fails like this: '{declared[:120]}'. Read the answer against it "
+                "yourself - the gate checks that one was written, not that it works"
+            )
+            if jaccard(declared, answer) > thresholds["max_field_similarity"]:
+                failures.append(
+                    "chosen.answers_failure_mode restates the failure mode rather than answering it"
+                )
         forbids = text_of(chosen.get("forbids"))
         if SELF_NEGATING_FORBID.search(forbids):
             warnings.append(

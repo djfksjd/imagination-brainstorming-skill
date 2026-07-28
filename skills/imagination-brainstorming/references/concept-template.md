@@ -48,6 +48,11 @@ The user's longer exclusions cannot be matched mechanically, so each one gets a
 written answer in the sidecar's `banlist_contract.manual_checks_cleared`: one
 line saying how the concept avoids it. The gate fails while any is unanswered.
 
+Your own long instincts land in the same list - which of them do depends on the
+subject, since a product instinct is a short noun phrase and a story or ritual
+instinct is a clause. Those are a reread, not a written answer: the gate names
+them in a warning and does not fail on them.
+
 <!-- section: approaches -->
 ## Approaches considered
 
@@ -69,6 +74,13 @@ block is missing, even if the surrounding prose says the same thing.
 <!-- bind: chosen.forbids -->
 What this design rules out on purpose, and the cost of that refusal.
 <!-- /bind -->
+
+**How it survives its own failure mode:** the approach you chose stated how it
+fails in this brief. Say what the design does about that, in
+`chosen.answers_failure_mode` and here. The gate refuses a spec that never
+wrote one and refuses an answer that is the failure restated; it cannot judge
+whether the failure is fatal or whether your answer works, so it prints the
+declared failure next to your answer for whoever reads the verdict.
 
 **What is now impossible:**
 
