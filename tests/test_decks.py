@@ -13,7 +13,7 @@ MIN_SIZE = {"question-families": 10, "frames": 30}
 
 
 def test_all_decks_present(decks):
-    assert set(decks) == {"question-families", "frames", "cliches", "spec-schema"}
+    assert set(decks) == {"question-families", "frames", "cliches", "spec-schema", "approaches-schema"}
 
 
 def test_question_families_are_usable(decks):
@@ -79,3 +79,35 @@ def test_template_declares_every_required_section(references, decks):
     template = (references / "concept-template.md").read_text(encoding="utf-8")
     for section in decks["spec-schema"]["required_markdown_sections"]:
         assert f"<!-- section: {section['id']} -->" in template, f"template is missing {section['id']}"
+
+
+def test_template_shows_every_bound_field_inline(references):
+    """spec_gate.py fails once per missing <!-- bind: field --> block
+    (chosen.forbids, chosen.impossible_now, first_use_scene, every
+    open_questions[i] - see spec-schema.json's bindings_note). A user
+    following the template should not need to open example-concept.md just to
+    discover three of the four exist: a spec built from a template that shows
+    only one gets rejected three times over for a value the template itself
+    never told them to write. This pins all four inline in the fenced
+    template, inside the concept/first-use/open-questions blocks the schema
+    requires them in."""
+    template = (references / "concept-template.md").read_text(encoding="utf-8")
+    fence_start = template.index("```markdown")
+    fence_end = template.index("```", fence_start + len("```markdown"))
+    body = template[fence_start:fence_end]
+    for field in ("chosen.forbids", "chosen.impossible_now", "first_use_scene", "open_questions[0]"):
+        assert f"<!-- bind: {field} -->" in body, f"template's fenced example never shows <!-- bind: {field} -->"
+    # concept and impossible_now must sit in the concept section, not deferred
+    # to trailing prose outside the fenced spec a user would actually copy.
+    concept_start = body.index("<!-- section: concept -->")
+    first_use_start = body.index("<!-- section: first-use -->")
+    open_q_start = body.index("<!-- section: open-questions -->")
+    decisions_start = body.index("<!-- section: decisions -->")
+    concept_body = body[concept_start:first_use_start]
+    first_use_body = body[first_use_start:open_q_start]
+    open_q_body = body[open_q_start:decisions_start]
+    assert "<!-- bind: chosen.forbids -->" in concept_body
+    assert "<!-- bind: chosen.impossible_now -->" in concept_body
+    assert "<!-- bind: first_use_scene -->" in first_use_body
+    assert "<!-- bind: open_questions[0] -->" in open_q_body
+    assert "<!-- bind: open_questions[1] -->" in open_q_body

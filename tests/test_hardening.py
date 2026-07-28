@@ -435,4 +435,9 @@ def test_cjk_prose_is_not_held_to_twice_the_bar():
     assert text_units("column") == 6
     assert text_units("기둥") == 4
     assert text_units("ＡＢＣ") == 3, "fullwidth Latin must not inflate the count"
-    assert text_units("★" * 10) == 10, "decoration must not clear a prose floor"
+    # Tightened twice, never relaxed: a run of characters that are neither
+    # letters nor digits first went from ten units to one, and now to zero -
+    # punctuation and whitespace pay nothing at all. The property this line has
+    # always asserted - decoration must not clear a prose floor - holds more
+    # strongly at each step.
+    assert text_units("★" * 10) == 0, "decoration must not clear a prose floor"

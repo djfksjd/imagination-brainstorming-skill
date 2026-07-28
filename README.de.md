@@ -136,29 +136,44 @@ Sie teilt aus einem neuen Zug neu aus, nimmt *jedes Element der vorigen Runde* i
 
 ### Die Skripte selbst fahren
 
-Python 3.11, Standardbibliothek, nichts zu installieren. Die Skripte liegen in `skills/imagination-brainstorming/scripts/`; schreiben Sie Arbeitsdateien in ein Scratch-Verzeichnis, nie in den Ordner der Fähigkeit.
+Python 3.11, Standardbibliothek, nichts zu installieren. Die Fähigkeit liegt in `skills/imagination-brainstorming/`, und alle folgenden Befehle sind so geschrieben, dass sie aus diesem Verzeichnis heraus laufen. Schreiben Sie Arbeitsdateien in ein Scratch-Verzeichnis, nie in den Ordner der Fähigkeit.
 
 ```bash
-# 1 · Fragefamilien und drei unvereinbare Rahmen austeilen
-python3 scripts/deal.py --brief "eine Art, die Schichtübergabe auf Station zu machen" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · den Vertrag bauen — zweimal, und die Reihenfolge zählt
-python3 scripts/banlist.py --brief "<Briefing>" --instincts instincts.txt \
-    --skeleton "eine Liste, die am Schichtende ausgefüllt wird" --out /tmp/work
-#    …dem Nutzer zeigen, seine Antwort einholen, und erst dann:
-python3 scripts/banlist.py --brief "<Briefing>" --instincts instincts.txt \
-    --skeleton "eine Liste, die am Schichtende ausgefüllt wird" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · Fragefamilien und drei unvereinbare Rahmen austeilen
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · den Vertrag bauen — zweimal, und die Reihenfolge zählt. --instincts ist eine
+#     Datei, die Sie selbst schreiben: eine naheliegende Antwort pro Zeile, zwölf Stück.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …dem Nutzer als Ausschlussliste zeigen, seine Antwort einholen, und erst dann:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · beweisen, dass die drei Ansätze wirklich drei sind
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · Spezifikation, Sidecar und Vertrag gemeinsam durchs Gatter — alle drei sind Pflicht
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+Jede dort genannte Datei liegt dem Repository bei, der Block läuft also genau so, und alle vier Schritte enden mit `0`; Schritt 2 erzeugt `references/example-banlist.json` exakt wieder. Tauschen Sie sie im Verlauf gegen die Ihrer eigenen Sitzung.
+
+**`approaches.json` schreiben Sie von Hand.** `deal.py` teilt die Rahmen aus; pro ausgeteiltem Rahmen schreiben Sie einen Ansatz in ein Objekt mit dem Schlüssel `approaches` — eine `id`, eine `frame_id` aus dem Rahmendeck, ein `summary` von mindestens 86 Einheiten, ein `failure_mode` von mindestens 43, das sagt, wie *dieser* Ansatz in *diesem* Auftrag scheitert, ein `frame_fit` von mindestens 36, das sagt, was in diesem Auftrag die vom Rahmen geforderte Stelle ausfüllt, und `unsafe_seat` bei genau einem auf true. `references/decks/approaches-schema.json` dokumentiert jedes Feld und jeden Boden, den die Prüfung anlegt; `references/example-approaches.json` ist eine bestehende Datei, deren Form Sie übernehmen können.
+
+Diese Böden zählen in Einheiten, nicht in Zeichen, und sie sind **gemessen, nicht geschätzt**. Ein und dieselbe Passage — die dünnste Erstkontakt-Szene, die anzunehmen sich lohnt — wurde ins Lateinische, Koreanische, Japanische, Chinesische, Thailändische, Devanagari, Hebräische und Arabische übersetzt und mit genau der Funktion gemessen, die auch läuft, daneben derselbe Gegenstand als flache Beschreibung. Die Szenen liegen zwischen 186 und 283 Einheiten, die Beschreibungen zwischen 41 und 64; eine einzige Zahl trennt sie also überall, und der Boden ist die höchste, die die dünnste legitime Szene in der dichtesten Schrift noch durchlässt. Was eine einzige Zahl nicht kann, ist überall gleich streng sein: derselbe Inhalt ist im Chinesischen rund ein Drittel weniger Einheiten wert als im Lateinischen, diese Latte sitzt für lateinische Prosa also enger. Sie sitzt so, weil das Zurückweisen legitimer Texte in der Sprache eines Menschen das schlimmere der beiden Versagen ist.
+
+An `frame_fit` wird sichtbar, wenn ein Rahmen den Auftrag nicht trägt. `designed-for-repair` — *nimm an, es geht oft kaputt; nenne das Reparaturverfahren und die Ersatzteile* — landete einmal auf dem unbequemen Platz für einen einmaligen Schließungsritus, der genau einmal stattfindet und weder Hersteller noch Ersatzteile kennt, und der Satz kam trotzdem durch. Wenn nichts im Auftrag die vom Rahmen genannte Stelle ausfüllen kann, schreiben Sie das hin und teilen mit `--run 2` neu aus, statt es zu begründen. Die Prüfung verlangt die Behauptung; ob sie stimmt, kann sie nicht prüfen.
+
 `--confirmed` protokolliert eine Zustimmung, die bereits stattgefunden hat. Sie zu setzen, bevor der Nutzer die Liste gesehen hat, ist eine Lüge, auf die sich die restliche Kette dann stützt, und das Gatter kann sie nicht erkennen — deshalb zwei Aufrufe statt eines Schalters.
+
+Den Vertrag auszutauschen ist nicht umsonst — unmöglich ist es aber auch nicht: nichts hier belegt eine Herkunft. Das Gatter baut ihn aus dem wieder auf, was `concept.json` erklärt, und weist jede Datei ab, der einer der verbrannten Reflexe, einer der eigenen Ausschlüsse des Nutzers oder ein Eintrag des mitgelieferten Klischeedecks fehlt; beide Dateien müssen dasselbe Skelett und denselben Auftrag zeichengenau führen, und der Auftrag der Bannliste muss einen Gegenstand nennen und nicht ein Wort. Dieses Deck wird gegen die Spezifikation angelegt, welcher Vertrag auch kommt — eine kürzere Datei bedeutet nie einen kürzeren Lint. Was das alles belegt, ist die Übereinstimmung zweier Dateien derselben Hand: einen Vertrag auszutauschen heißt, ihn neu zu schreiben, nicht ihn umzubenennen. Darüber hinaus werden die verbrannten Reflexe und Ihre eigenen Ausschlussregeln **inhaltlich** neu berechnet — als Vereinigung über jede Stelle, an der eine der beiden Dateien sie festhält — und in einem separaten Durchgang geprüft, der keine ID, keine Stufe und kein `allowed`-Feld liest und keine Freigabe anerkennt. Eine ID umbenennen, sie mit einer mitgelieferten Klischee-ID kollidieren lassen, einen Eintrag herabstufen, eine Aussage zwischen Feldern oder zwischen den beiden Dateien verschieben, sie duplizieren oder eine ihrer Zeilen löschen — nichts davon ändert, ob sie auslöst; jeder dieser Wege war einmal offen. Was das nicht belegt: Hier liegt keine Kopie Ihrer Ausschlussregeln, die die Sitzung nicht selbst geschrieben hat; eine aus allen Feldern beider Dateien gelöschte Aussage ist damit schlicht weg.
 
 `cliche_lint.py` ist für **Entwürfe mitten in der Sitzung**. Auf eine fertige Spezifikation angewandt, markiert es deren eigenen Verbotslisten-Abschnitt; die fertige Spezifikation prüft `spec_gate.py`, und das schneidet diesen Abschnitt vorher heraus.
 
@@ -174,17 +189,34 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 ### Was die Gatter nicht prüfen können
 
 > [!IMPORTANT]
-> Sie sind Böden. Sie belegen, dass die Arbeit **getan** wurde, nicht dass sie **richtig** war. Drei Dinge passieren jedes Gatter in diesem Repository:
+> Sie sind Böden. Sie prüfen, ob die verlangte Arbeit **da ist**, nicht ob sie **richtig** war. Drei Dinge passieren jedes Gatter in diesem Repository:
 >
 > - **eine Begründung, die ihre eigene Evidenz umdreht** — ein Argument, dessen Prämisse bei genauem Lesen die entgegengesetzte Schlussfolgerung stützt;
 > - **ein Mechanismus, der mit den eigenen Mitteln angreifbar ist** — etwa eine Zahl, die sich mit der Reihenfolge der Berechnung ändert, präsentiert als Transparenzbeweis des Konzepts;
 > - **drei Ansätze, die in Wahrheit eine Idee sind**, in drei Vokabularen. Die Prüfung fängt Umformulierung und gemeinsame Todesursachen; lesen kann sie nicht.
+>
+> Zwei weitere verlangt das Gatter jetzt, ohne über eines davon zu urteilen: der Fehlermodus, den der gewählte Ansatz selbst aufgeschrieben hat, muss in `chosen.answers_failure_mode` **beantwortet** sein — ein Konzept, das seinen eigenen Zusammenbruch erklärte und weiterging, kam zuvor im ersten Anlauf durch — und jeder Ansatz muss sagen, was im Auftrag seinen Rahmen ausfüllt. In beiden Fällen prüft das Gatter, dass etwas geschrieben wurde, und legt es Ihnen vor; ob die Antwort taugt, kann es nicht sagen.
 >
 > Eine vierte kam durch und kommt nicht mehr durch: dieselben Worte, zitiert in einem Satz, der sie zurückweist. Das Verbot, das Unmöglichgewordene, die Erstkontakt-Szene und jede offene Frage werden jetzt mit `<!-- bind: … -->` markiert und **exakt** mit dem Sidecar verglichen — je einmal, im eigenen Abschnitt, als schlichte Prosa. Der ersetzte Ähnlichkeitswert konnte *„wir verbieten X"* nicht von *„wir haben erwogen, X zu verbieten, erlauben es aber"* unterscheiden. Und weder dieses Gatter noch die Divergenzprüfung nehmen noch `--allow`: Eine zur Urteilszeit gewährte Ausnahme gewährt die Partei, um die es im Urteil geht.
 >
 > Alle drei traten im eigenen Probelauf dieser Fähigkeit auf, und alle drei fand ein Mensch, kein Skript. Also: bevor die Spezifikation bei Ihnen ankommt, lassen Sie sie von einem zweiten Leser angreifen — ein anderes Modell, eine Kollegin — mit der Aufgabe zu begründen, dass **sie verliert**, nicht dass sie besser werden könnte. „Wie macht man das besser" bringt Politur. „Warum verliert das" bringt die umgedrehte Prämisse.
 >
 > Die Fähigkeit führt auch an sich selbst eine **Beweisrichtungs-Prüfung** durch: Zu jedem tragenden *weil* muss sie die entgegengesetzte Schlussfolgerung notieren, die dieselbe Prämisse stützen würde, und benennen, was die entscheidende Instanz tatsächlich beobachten kann. Das ist der Schritt, der *„die Jury ist eine Maschine, also ist unser internes Protokoll das Unterscheidungsmerkmal"* fängt — eine Maschine kann das interne Protokoll nicht beobachten, also spricht diese Prämisse für das Gegenteil.
+>
+> Eine von Hand bearbeitete Verbotsliste kann ein eigenes `structural_patterns[].regex` hinzufügen, und ein Muster in der Form `(a+)+` lässt Pythons eigenen Abgleich-Algorithmus bei manchen Eingaben exponentiell lange brauchen — ein Gatter, das nie antwortet, ist für die wartende Seite nicht von einem bestandenen Gatter zu unterscheiden. Ein solches Muster wird jetzt unter Nennung seiner id abgelehnt, bevor es überhaupt läuft. Die Prüfung ist ein deterministischer Scan nach der klassischen verschachtelten Wiederholungsform, verengt dieses Risiko also nur, statt es zu beseitigen — eine nicht erkannte katastrophale Form kann weiterhin langsam sein — und unter macOS und Linux fängt eine zweite, auf Echtzeit basierende Notbremse auf, was der Scan übersieht; diese Notbremse steht unter Windows nicht zur Verfügung. Eine lange Zeile wird in überlappenden 4000-Zeichen-Fenstern vollständig durchsucht, statt bei 4000 Zeichen abgeschnitten zu werden — die erste Fassung schnitt ab, sodass ein struktureller Bann jenseits dieser Stelle still zu greifen aufhörte, was schlimmer ist als das Hängen, das er ersetzen sollte. Ist das Zeitbudget der Zeile aufgebraucht, wird unter Nennung des Musters abgelehnt; ein Treffer, der länger als die 512 Zeichen Überlappung ist und auf einer Fenstergrenze liegt, kann weiterhin übersehen werden.
+>
+> **`imagination-engine` entscheidet dieses Feld umgekehrt, und sagt das auch.** Dessen Gatter weigert sich grundsätzlich, ein von der Nutzerin geliefertes `structural_patterns[].regex` zu kompilieren, und gibt stattdessen eine Ablehnung aus, die das Muster benennt, statt es laufen zu lassen — weil dieses Gatter bereits jede andere Form von laufzeitgelieferter Regel ablehnt (es gibt dort kein `--rubric`, kein `--min-mean`, kein honoriertes `--allow`), und weil eine zeitbasierte Abwehr bedeutet, dass das, was tatsächlich geprüft wurde, davon abhängt, wie schnell die Host-Maschine ist — ein Urteil, das nicht vom Rechner abhängen sollte. Dieses Gatter nimmt die Kosten in Kauf statt der Ablehnung: Der strukturelle Scan und die Zeichenobergrenze oben gelten in beiden Fällen, aber der `SIGALRM`-Timer, der auffängt, was der Scan übersieht, ist POSIX-only — unter Windows verteidigen also nur der Scan und die Zeichenobergrenze das Gatter, und selbst unter macOS oder Linux ist ein Muster, das auf einer langsamen Maschine hängt und auf einer schnellen durchläuft, genau das maschinenabhängige Urteil, das die Ablehnung der Engine vermeiden soll. Wer zwischen den beiden Fähigkeiten wechselt, sollte erwarten, dass ein Muster, das hier still kompiliert wird, dort unter Namensnennung abgelehnt wird.
+
+### Aufträge, die keine Produkte sind
+
+Der Ablauf, die Fragenfamilien, die Rahmen und der Spezifikationsvertrag gelten für jeden Gegenstand — eine Erzählwelt, eine Spielmechanik, einen Ritus, eine Kampagne, ein Format. Zwei Teile der Mechanik sind enger als das, und man sollte wissen, welche:
+
+- **Die Klischee-Phrasenliste ist Pitch- und Produktvokabular** — one-stop shop, KPI-Dashboard, das Uber für X, Gamification. Auf einem erzählerischen oder rituellen Auftrag wird davon kaum etwas jemals auslösen. Das heißt: die maschinell prüfbare Hälfte des Vertrags tut dort wenig, und das Gewicht tragen die Reflexe und das Skelett dieser Sitzung selbst. Die hohlen Adjektive und die verbotenen Züge gelten überall weiter.
+- **Ein verbotenes Adjektiv kann gewöhnliches Vokabular sein.** In der Fiktion bezeichnen *magical* und *delightful*, statt zu behaupten, und *„die Gegend ist nicht magical"* wurde genau dafür zurückgewiesen. Markieren Sie die Stelle dort, wo sie steht — `<!-- mention: hollow-magical -->die Gegend ist nicht magical<!-- /mention -->` — und die Freigabe gilt nur für diese Stelle und diese Regel. Ob das Wort wirklich erwähnt und nicht verwendet wird, lässt sich nicht verifizieren; die Behauptung wird explizit und nachlesbar, statt dass nur die pauschale Freigabe der ganzen Regel bliebe. Die Markierung ist begrenzt: eine Regel-ID pro Markierung, ein Absatz pro Stelle (200 Einheiten), darin eine Verneinung oder das Wort in doppelten Anführungszeichen, höchstens fünf pro Dokument — und ein erster Reflex oder eine Ihrer eigenen Ausschlussregeln lässt sich so nie freigeben, weder auf diesem noch auf einem anderen Weg. Eine einzige Markierung, die alle IDs nannte, gab einmal den ganzen Vertrag frei. Die Freigabe gilt genau für die markierten Zeichen: die markierte Stelle wird an Ort und Stelle geleert und getrennt geprüft, sodass ein identischer Satz an anderer Stelle im Dokument eine andere Stelle ist und weiterhin auffällt — früher gab eine einzige Markierung jede mit ihr identische Zeile der Datei frei. Die Markierungen müssen zudem an Wortgrenzen stehen.
+
+Zwei Dinge, die man besser erwartet, als sie zu entdecken: Ihre ersten Reflexe sind häufiger Sätze als Nominalphrasen, also landen mehr davon in den manuellen Prüfpunkten — die ein Wiederlesen sind, keine Notizen, die Sie schreiben müssen; schriftlich beantwortet werden nur *die eigenen* Ausschlüsse des Nutzers — und ein ausgeteilter Rahmen ist eher einer, den der Auftrag nicht trägt, wofür `frame_fit` und ein neues Austeilen da sind.
+
+`references/example-ritual-concept.md` ist ein vollständiges Beispiel genau dieser Form: der Schließungsritus einer Bäckerei, die seit neunzig Jahren in derselben Straße steht, samt Vertrag, Ansätzen und Sidecar, geprüft mit denselben zwei Befehlen.
 
 ## Was er nicht tut
 
@@ -193,7 +225,7 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 > - **Behaupten, das habe noch nie jemand gedacht.** Unüberprüfbar, also untersagt. Stattdessen werden die nächstliegenden existierenden Dinge benannt und der Unterschied gesagt.
 > - **Fremdheit fabrizieren.** Wenn die konventionelle Antwort die richtige ist, muss der Skill das in einem Satz sagen, sich selbst verlassen und die gewöhnliche Arbeit außerhalb erledigen.
 > - **Deine Anfrage verkleinern, damit sie leichter zu spezifizieren ist.** Umfang wird offen zerlegt, nie still verengt.
-> - **So tun, als hieße ein bestandenes Gate, die Idee sei gut.** Es beweist, dass die Arbeit getan wurde, nicht dass das Konzept stimmt. Der Skill sagt das in seiner eigenen Ausgabe.
+> - **So tun, als hieße ein bestandenes Gate, die Idee sei gut.** Es prüft, dass die verlangten Aussagen und Artefakte vorliegen, nicht dass das Konzept stimmt. Der Skill sagt das in seiner eigenen Ausgabe.
 
 ## Unter der Haube
 
@@ -215,7 +247,12 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # eine komplette Sitzung, samt Verworfenem
 │   ├── example-concept.md      # die Spec, die diese Sitzung ergab
 │   ├── example-concept.json    # ihr Sidecar — beide bestehen die Gates und dienen als Fixtures
-│   └── decks/                  # Frage-Familien · Rahmen · Klischees · Spec-Schema
+│   ├── example-approaches.json # Eingabe für Stufe 3, in der Form, die divergence_check.py liest
+│   ├── example-banlist.json    # der Vertrag, gegen den all das geprüft wurde
+│   ├── example-ritual-*.{md,json,txt}  # ein zweites vollständiges Beispiel, das kein Produkt und kein Dienst ist
+│   ├── example-instincts.txt   # die zwölf Instinkte, aus denen er gebaut wurde
+│   ├── example-exclusions.txt  # und die drei Ausschlüsse des Nutzers
+│   └── decks/                  # Frage-Familien · Rahmen · Klischees · Spec-Schema · Ansatz-Schema
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

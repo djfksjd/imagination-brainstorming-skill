@@ -57,6 +57,8 @@ It forbids composing a handover from scratch, and it forbids the state 'nothing 
 Passing a patient to the next shift with no statement about them at all becomes impossible; silence is no longer a valid handover state.
 <!-- /bind -->
 
+**How it survives its own failure mode:** the approach's stated death is presumption - a draft that is ninety per cent right trains people to skim. Skimming is the death this approach wrote down for itself, so the design has to make bulk acceptance impossible rather than discouraged: every line is accepted or amended one at a time by the nurse taking it on, and a line nobody touches stays open and appears on the next handover with its age showing. The bet is narrower than 'friction survives a busy ward' - it only has to survive eleven lines, and an untouched line costs the outgoing nurse a second conversation rather than nothing. What would falsify it: if the ageing lines are routinely cleared in a batch at the end of the week, the mechanism has failed and the ward should go back to the ledger.
+
 **The boring half:** eleven lines a shift; the ten minutes at the station; the escalation path when a duty passes its deadline twice; the monthly reconciliation of duties that were inherited but never closed.
 
 <!-- section: first-use -->

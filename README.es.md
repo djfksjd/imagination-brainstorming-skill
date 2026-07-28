@@ -136,29 +136,44 @@ Reparte desde una tirada nueva, añade *todos los elementos de la ronda anterior
 
 ### Ejecutar los scripts a mano
 
-Python 3.11, biblioteca estándar, nada que instalar. Los scripts están en `skills/imagination-brainstorming/scripts/`; escribe los archivos de trabajo en un directorio temporal, nunca dentro de la carpeta de la habilidad.
+Python 3.11, biblioteca estándar, nada que instalar. La habilidad vive en `skills/imagination-brainstorming/`, y todos los comandos siguientes están escritos para ejecutarse desde dentro de ese directorio. Escribe los archivos de trabajo en un directorio temporal, nunca dentro de la carpeta de la habilidad.
 
 ```bash
-# 1 · reparte las familias de preguntas y tres marcos incompatibles
-python3 scripts/deal.py --brief "una forma de traspasar turnos en la planta" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · construye el contrato — dos veces, y el orden importa
-python3 scripts/banlist.py --brief "<encargo>" --instincts instincts.txt \
-    --skeleton "una lista que se rellena al final del turno" --out /tmp/work
-#    …muéstraselo al usuario, recoge su respuesta, y solo entonces:
-python3 scripts/banlist.py --brief "<encargo>" --instincts instincts.txt \
-    --skeleton "una lista que se rellena al final del turno" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · reparte las familias de preguntas y tres marcos incompatibles
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · construye el contrato — dos veces, y el orden importa. --instincts es un
+#     archivo que escribes tú: una respuesta probable por línea, doce en total.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …enséñaselo al usuario como exclusiones, recoge su respuesta, y solo entonces:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · demuestra que los tres enfoques son realmente tres
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · pasa por la verja la especificación, su sidecar y el contrato juntos — los tres son obligatorios
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+Todos los archivos que aparecen ahí vienen en el repositorio, así que el bloque se ejecuta tal cual y los cuatro pasos terminan en `0`; el paso 2 reproduce `references/example-banlist.json` exactamente. Ve sustituyéndolos por los de tu propia sesión a medida que avances.
+
+**`approaches.json` se escribe a mano.** `deal.py` reparte los marcos; tú escribes un enfoque por marco repartido dentro de un objeto con una clave `approaches` — un `id`, un `frame_id` del mazo de marcos, un `summary` de al menos 86 unidades, un `failure_mode` de al menos 43 que diga cómo falla *este* enfoque en *este* encargo, un `frame_fit` de al menos 36 que diga qué cosa de este encargo ocupa el lugar que el marco exige, y `unsafe_seat` en true en exactamente uno de ellos. `references/decks/approaches-schema.json` documenta cada campo y cada suelo que aplica la comprobación; `references/example-approaches.json` es un archivo que pasa y del que copiar la forma.
+
+Esos suelos se cuentan en unidades, no en caracteres, y están **medidos, no supuestos**. Un mismo pasaje —la escena de primer uso más delgada que valga la pena aceptar— se tradujo al latino, coreano, japonés, chino, tailandés, devanagari, hebreo y árabe y se midió con la función que realmente se ejecuta, junto al mismo asunto escrito como descripción plana. Las escenas dieron entre 186 y 283 unidades y las descripciones entre 41 y 64, así que un solo número las separa en todas partes, y el suelo es el más alto que aún admite la escena legítima más delgada en la escritura más densa. Lo que un solo número no puede hacer es ser igual de estricto en todas: el mismo contenido vale alrededor de un tercio menos de unidades en chino que en latino, así que este listón aprieta más a la prosa latina. Está puesto así porque rechazar la escritura legítima de alguien en su propia lengua es el peor de los dos fallos.
+
+`frame_fit` es donde se hace visible un marco que el encargo no puede sostener. A `designed-for-repair` — *supón que se rompe a menudo; incluye el procedimiento de reparación y los repuestos* — le tocó una vez el asiento incómodo de un rito de cierre que ocurre una sola vez y no tiene fabricante ni repuestos, y el conjunto pasó igual. Si nada en el encargo puede ocupar el lugar que el marco nombra, dilo y vuelve a repartir con `--run 2` en vez de argumentarlo. La comprobación exige la afirmación; no puede comprobar que sea cierta.
+
 `--confirmed` registra un consentimiento que ya ocurrió. Activarlo antes de que el usuario haya visto la lista es una mentira de la que depende todo el resto de la tubería, y la verja no tiene forma de detectarla — por eso son dos llamadas y no un flag.
+
+Sustituir el contrato no sale gratis, aunque tampoco es imposible: aquí nada establece procedencia. La verja lo reconstruye a partir de lo que declara `concept.json` y rechaza cualquier archivo al que le falte uno de los instintos quemados, una de las exclusiones del propio usuario o una entrada del mazo de clichés incluido; los dos archivos deben registrar el mismo esqueleto y el mismo encargo, carácter por carácter, y el encargo de la lista de vetos tiene que nombrar un asunto y no una palabra. Ese mazo se aplica a la especificación llegue el contrato que llegue, así que entregar un archivo más corto nunca significa un lint más corto. Lo que todo eso establece es la coherencia entre dos archivos escritos por la misma mano: sustituir un contrato exige reescribirlo, no rebautizarlo. Además, los instintos quemados y tus propias exclusiones se recalculan **por contenido** —como unión de todos los sitios donde cualquiera de los dos archivos los registra— y se revisan en una pasada aparte que no lee ningún id, ninguna categoría ni el campo `allowed`, y que no honra ninguna liberación. Renombrar un id, hacerlo chocar con un id del mazo de clichés, bajar de categoría una entrada, mover un enunciado entre campos o entre los dos archivos, duplicarlo o borrar una de sus filas: nada de eso cambia si salta o no, y cada una de esas vías estuvo abierta en algún momento. Lo que no establece: aquí no hay ninguna copia de tus exclusiones que la sesión no haya escrito, así que un enunciado borrado de todos los campos de ambos archivos simplemente desaparece.
 
 `cliche_lint.py` es para **borradores a mitad de sesión**. Pásalo sobre una especificación terminada y señalará la propia sección de prohibiciones del documento; quien revisa una especificación terminada es `spec_gate.py`, que recorta ese tramo antes.
 
@@ -174,17 +189,34 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 ### Lo que las verjas no pueden comprobar
 
 > [!IMPORTANT]
-> Son suelos. Prueban que el trabajo se **hizo**, no que fuera **correcto**. Tres cosas pasan todas las verjas de este repositorio:
+> Son suelos. Comprueban que el trabajo exigido **está**, no que fuera **correcto**. Tres cosas pasan todas las verjas de este repositorio:
 >
 > - **una justificación que invierte su propia evidencia** — un argumento cuya premisa, leída con cuidado, sostiene la conclusión contraria;
 > - **un mecanismo atacable en sus propios términos** — por ejemplo, un número que cambia según el orden en que se calculó, presentado como la prueba de transparencia del concepto;
 > - **tres enfoques que son de verdad una sola idea** en tres vocabularios. La comprobación detecta la reformulación y las causas de muerte compartidas; no sabe leer.
+>
+> Hay dos cosas más que la verja exige ahora, sin pretender juzgar ninguna: el modo de fallo que el propio enfoque elegido dejó escrito tiene que quedar **respondido** en `chosen.answers_failure_mode` — un concepto que declaraba su propio derrumbe y seguía adelante pasaba antes a la primera —, y cada enfoque tiene que decir qué cosa del encargo ocupa su marco. En ambos casos la verja comprueba que se escribió algo y te lo pone delante; no puede decirte si la respuesta vale.
 >
 > Una cuarta pasaba y ya no: las mismas palabras citadas dentro de una frase que las rechaza. La prohibición, lo que se vuelve imposible, la escena de primer uso y cada pregunta abierta se marcan ahora con `<!-- bind: … -->` y se comparan con el sidecar **exactamente**: una vez cada una, dentro de su propia sección, como prosa llana. La puntuación de similitud que sustituyen no distinguía *"prohibimos X"* de *"consideramos prohibir X pero lo permitimos"*. Y ni esta verja ni la comprobación de divergencia aceptan ya `--allow`: una excepción concedida en el momento del veredicto la concede la parte sobre la que trata el veredicto.
 >
 > Las tres ocurrieron durante la propia sesión de prueba de esta habilidad y las tres las cazó una persona, no un script. Así que: antes de que la especificación llegue a ti, haz que un segundo lector la ataque — otro modelo, un colega — y pídele que argumente que **pierde**, no que podría mejorarse. "Cómo lo harías mejor" te trae pulido. "Por qué pierde esto" te trae la premisa invertida.
 >
 > La habilidad también se aplica a sí misma una **auditoría de dirección de la evidencia**: para cada *porque* que sostiene algo, tiene que escribir la conclusión opuesta que la misma premisa sostendría, y nombrar qué puede observar realmente quien decide. Ese es el paso que caza *"el evaluador es una máquina, por tanto nuestro registro interno es el diferenciador"* — una máquina no puede observar el registro interno, así que esa premisa argumenta lo contrario.
+>
+> Una lista de exclusión editada a mano puede añadir su propio `structural_patterns[].regex`, y un patrón con la forma `(a+)+` hace que el propio motor de coincidencias de Python tarde un tiempo exponencial con ciertas entradas — una verja que nunca responde es, para quien la espera, indistinguible de una verja que dejó pasar. Un patrón así ahora se rechaza por su id antes de llegar a ejecutarse. La comprobación es un barrido determinista que detecta la forma clásica de repetición anidada, así que reduce este riesgo sin eliminarlo — una forma catastrófica que no reconoce puede seguir siendo lenta — y en macOS y Linux hay además un segundo respaldo, basado en el reloj, que atrapa lo que el barrido pasa por alto; ese respaldo no está disponible en Windows. Una línea larga se recorre entera en ventanas solapadas de 4000 caracteres en vez de truncarse a 4000 —la primera versión truncaba, de modo que un veto estructural dejaba de saltar en silencio a partir de ahí, lo cual es peor que el bloqueo que venía a sustituir—. Si se agota el presupuesto de tiempo de la línea, se rechaza nombrando el patrón; una coincidencia más larga que los 512 caracteres de solape y que caiga sobre el borde de una ventana todavía puede escaparse.
+>
+> **`imagination-engine` decide este punto al revés, y lo dice.** Su verja se niega por completo a compilar cualquier `structural_patterns[].regex` que aporte la usuaria, e imprime un rechazo que nombra el patrón en lugar de ejecutarlo — porque esa verja ya rechaza cualquier otra política aportada en tiempo de ejecución (allí no hay `--rubric`, ni `--min-mean`, ni un `--allow` que se respete), y porque una defensa basada en temporizador hace que lo que realmente se revisó dependa de la velocidad de la máquina anfitriona, un veredicto que no debería variar según el ordenador. Esta verja asume el coste en vez del rechazo: el barrido estructural y el tope de caracteres de arriba valen en ambos casos, pero el temporizador `SIGALRM` que atrapa lo que el barrido pasa por alto es exclusivo de POSIX, así que en Windows solo el barrido y el tope de caracteres defienden la verja, y hasta en macOS o Linux un patrón que se cuelga en una máquina lenta y termina en una rápida es exactamente el veredicto dependiente de la máquina que el rechazo de la engine busca evitar. Quien pase de una skill a la otra debe esperar que un patrón que aquí se compila en silencio, allí sea rechazado por su nombre.
+
+### Encargos que no son productos
+
+El proceso, las familias de preguntas, los marcos y el contrato de la especificación valen para cualquier asunto: un mundo narrativo, una mecánica de juego, un rito, una campaña, un formato. Dos piezas de la maquinaria son más estrechas que eso, y conviene saber cuáles:
+
+- **La lista de frases cliché es vocabulario de pitch y de producto** — one-stop shop, panel de KPIs, el Uber de X, gamificación. En un encargo narrativo o ritual casi ninguna llegará a dispararse. Eso significa que la mitad comprobable por máquina del contrato hace poco y que el peso lo llevan los instintos y el esqueleto de esa misma sesión. Los adjetivos huecos y las jugadas prohibidas siguen valiendo en todas partes.
+- **Un adjetivo vetado puede ser vocabulario corriente.** En ficción, *magical* y *delightful* designan en vez de afirmar, y *«la región no es magical»* llegó a ser rechazada por decirlo. Marca ese tramo en su sitio — `<!-- mention: hollow-magical -->la región no es magical<!-- /mention -->` — y la liberación cubre ese tramo y esa regla, nada más. No puede verificar que la palabra se mencione en vez de usarse; lo que hace es dejar la afirmación explícita y revisable en lugar de que la única salida sea levantar la regla entera. La marca está acotada: un id de regla por marca, un párrafo por tramo (200 unidades), dentro una negación o la palabra entre comillas dobles, y como mucho cinco por documento — y un primer instinto o una exclusión tuya no se libera así jamás, ni por esta vía ni por ninguna otra. Una sola marca que nombraba todos los ids llegó a liberar el contrato entero. La liberación cubre exactamente los caracteres marcados: el tramo marcado se vacía en su sitio y se revisa aparte, así que una frase idéntica en otro punto del documento es otro tramo y sigue saltando —antes una sola marca liberaba todas las líneas del archivo idénticas a la marcada—. Las marcas deben además caer en límites de palabra.
+
+Dos cosas que conviene esperar en vez de descubrir: más de tus primeros instintos serán cláusulas que sintagmas nominales, así que más de ellos acabarán en las comprobaciones manuales — que son una relectura, no notas que tengas que escribir, y solo *tus propias* exclusiones exigen respuesta escrita —, y es más probable que te toque un marco que el encargo no puede sostener, que es justo para lo que están `frame_fit` y volver a repartir.
+
+`references/example-ritual-concept.md` es un ejemplo completo con esa forma exacta: el rito de cierre de una panadería que lleva noventa años en la misma calle, con su contrato, sus enfoques y su sidecar, controlado por los mismos dos comandos.
 
 ## Lo que no hará
 
@@ -193,7 +225,7 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 > - **Afirmar que nadie ha pensado esto.** Inverificable, así que está prohibido. Nombra las cosas existentes más cercanas y explica la diferencia.
 > - **Fabricar rareza.** Cuando la respuesta convencional es la correcta, la skill debe decirlo en una frase, salir de sí misma y hacer el trabajo normal fuera.
 > - **Encoger tu petición para que sea más fácil de especificar.** El alcance se descompone abiertamente, nunca se estrecha en silencio.
-> - **Fingir que pasar un control significa una buena idea.** Demuestra que el trabajo se hizo, no que el concepto sea el correcto. La skill lo dice en su propia salida.
+> - **Fingir que pasar un control significa una buena idea.** Comprueba que están las afirmaciones y los artefactos exigidos, no que el concepto sea el correcto. La skill lo dice en su propia salida.
 
 ## Por dentro
 
@@ -215,7 +247,12 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # una sesión completa, incluido lo descartado
 │   ├── example-concept.md      # la spec que produjo esa sesión
 │   ├── example-concept.json    # su sidecar — ambos pasan los controles y sirven de fixture
-│   └── decks/                  # familias de preguntas · marcos · clichés · esquema de spec
+│   ├── example-approaches.json # entrada de la etapa 3, tal como la lee divergence_check.py
+│   ├── example-banlist.json    # el contrato con el que se controló todo lo anterior
+│   ├── example-ritual-*.{md,json,txt}  # un segundo ejemplo completo que no es producto ni servicio
+│   ├── example-instincts.txt   # los doce instintos con que se construyó
+│   ├── example-exclusions.txt  # y las tres exclusiones del propio usuario
+│   └── decks/                  # familias de preguntas · marcos · clichés · esquema de spec · esquema de enfoques
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

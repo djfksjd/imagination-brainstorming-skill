@@ -11,7 +11,13 @@ presented as a list of exclusions, never as a menu of suggestions.
 
 Short entries (<= 6 words) become matchable bans. Longer ones are kept as
 manual reminders, because matching a fifteen-word sentence literally would
-catch nothing while pretending to protect something.
+catch nothing while pretending to protect something. Where the split falls
+depends on the subject: a product instinct is a three-word noun phrase and
+becomes a ban, while a story, ritual or mechanic instinct is naturally a
+clause and becomes a reminder. Only the user's reminders require a written
+answer at the gate - see spec_gate.py, which used to require one for every
+reminder and so charged a narrative brief twelve notes that no instruction
+had asked for.
 
 Usage:
   banlist.py --brief "..." --instincts instincts.txt --skeleton "..." \
@@ -30,20 +36,21 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_deck, normalize,
-        read_text_arg, text_units, write_json,
+        VERSION, MATCHABLE_MAX_WORDS, UsageParser, EngineError, csv_list, deck_lint_entries, die,
+        is_matchable_phrase, load_deck, normalize, read_text_arg, text_units, write_json,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_deck, normalize,
-        read_text_arg, text_units, write_json,
+        VERSION, MATCHABLE_MAX_WORDS, UsageParser, EngineError, csv_list, deck_lint_entries, die,
+        is_matchable_phrase, load_deck, normalize, read_text_arg, text_units, write_json,
     )
 
 MIN_INSTINCTS = 8
-MIN_SKELETON_UNITS = 40
-MATCHABLE_MAX_WORDS = 6
+MIN_SKELETON_UNITS = 29
+# The split between a matchable ban and a manual reminder lives in engine.py, so
+# spec_gate.py can replay it without importing this builder.
 BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)])\s*")
 GATE_FAIL = 2
 
@@ -82,8 +89,7 @@ def parse_lines(raw: str) -> list[str]:
 def classify(items: list[str], prefix: str, group: str, source: str,
              entries: list[dict[str, Any]], manual: list[dict[str, str]]) -> None:
     for i, item in enumerate(items, start=1):
-        words = [w for w in re.split(r"\s+", item.strip()) if w]
-        if len(words) <= MATCHABLE_MAX_WORDS:
+        if is_matchable_phrase(item):
             entries.append({
                 "id": f"{prefix}-{i:02d}", "phrase": item, "tier": "ban",
                 "group": group, "source": source,
@@ -182,9 +188,12 @@ def render_human(payload: dict[str, Any]) -> str:
         lines.append("      while user_confirmed is false, so an unsigned contract cannot reach a spec.")
     if payload["manual_checks"]:
         lines.append("")
-        lines.append("MANUAL CHECKS (grep cannot help here - reread the spec against these):")
+        lines.append("MANUAL CHECKS (grep cannot help here - reread the spec against these).")
+        lines.append("The user's need a written answer in banlist_contract.manual_checks_cleared;")
+        lines.append("your own long instincts are a reread, and the gate says so rather than failing.")
         for m in payload["manual_checks"]:
-            lines.append(f"  - [{m['source']}] {m['statement']}")
+            owner = "user - answer in writing" if m["source"] == "user" else "yours - reread"
+            lines.append(f"  - [{owner}] {m['statement']}")
     lines.append("")
     lines.append("FORBIDDEN MOVES:")
     for m in payload["forbidden_moves"]:

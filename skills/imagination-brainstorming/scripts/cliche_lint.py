@@ -26,15 +26,19 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_banlist, load_deck, lint_text,
-        read_text_arg,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
+        lint_document, releasable_ids, load_banlist, load_deck, lint_text, mention_bound_failures,
+        mention_placement_failures, normalize, protected_lint_entries, protected_statements,
+        read_text_arg, strip_mention_markers,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_banlist, load_deck, lint_text,
-        read_text_arg,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
+        lint_document, releasable_ids, load_banlist, load_deck, lint_text, mention_bound_failures,
+        mention_placement_failures, normalize, protected_lint_entries, protected_statements,
+        read_text_arg, strip_mention_markers,
     )
 
 FAIL_CODE = 3
@@ -61,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         cliches = load_deck("cliches")
         patterns = cliches["structural_patterns"]
         manual: list[dict[str, Any]] = []
+        payload: dict[str, Any] = {}
         if args.banlist:
             payload = load_banlist(args.banlist)
             entries = payload["entries"]
@@ -69,7 +74,33 @@ def main(argv: list[str] | None = None) -> int:
         else:
             entries = deck_lint_entries(cliches)
         draft = read_text_arg(args.draft)
-        findings = lint_text(draft, entries, patterns, set(csv_list(args.allow)))
+        mentions = extract_mentions(draft)
+        known = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
+        for body, ids in mentions:
+            unknown = sorted(i for i in ids if i not in known)
+            if not ids or unknown:
+                raise EngineError(
+                    f"a mention block names {'no rule id' if not ids else 'unknown rule id(s) ' + ', '.join(unknown)} "
+                    f"({body.strip()[:60]}...). Mark the span with the id printed in square brackets by this lint"
+                )
+        bound_failures = mention_bound_failures(mentions, known) + mention_placement_failures(draft)
+        if bound_failures:
+            raise EngineError(bound_failures[0])
+        findings = lint_document(draft, entries, patterns)
+        # `--allow` is a drafting convenience and is applied after the fact, to
+        # the deck ids only, so it can never reach a burnt instinct or one of
+        # the user's exclusions - the same set `releasable_ids()` holds.
+        released = {i for i in csv_list(args.allow) if i in releasable_ids()}
+        findings = [f for f in findings if f["id"] not in released]
+        # The protected set is recomputed from the contract's own content and
+        # linted separately, with no release of any kind: a hand-edited ban list
+        # whose `instinct-01` was renamed to a bundled deck id would otherwise
+        # shrink the drafting lint exactly as it shrank the gate's.
+        already = {(f["line"], normalize(f["match"])) for f in findings}
+        for f in lint_text(strip_mention_markers(draft),
+                           protected_lint_entries(protected_statements(None, payload)), []):
+            if (f["line"], normalize(f["match"])) not in already:
+                findings.append(f)
     except EngineError as exc:
         die(str(exc), 1)
         return 1
@@ -92,9 +123,11 @@ def main(argv: list[str] | None = None) -> int:
         for f in warns:
             print(f"WARN  line {f['line']}: {f['match']!r} [{f['id']}] - {f['excerpt']}")
         if manual:
-            print("\nMANUAL CHECKS (not machine-checkable - reread the draft against these):")
+            print("\nMANUAL CHECKS (not machine-checkable - reread the draft against these).")
+            print("The user's need a written answer at the gate; your own long instincts are a reread.")
             for m in manual:
-                print(f"  - [{m.get('source', '?')}] {m.get('statement', '')}")
+                owner = "user - answer in writing" if m.get("source") == "user" else "yours - reread"
+                print(f"  - [{owner}] {m.get('statement', '')}")
         print(f"\n{len(bans)} banned, {len(warns)} warnings, {len(manual)} manual checks.")
         if failed:
             print("FAILED: rewrite the flagged lines. Deleting the word is not a fix - "

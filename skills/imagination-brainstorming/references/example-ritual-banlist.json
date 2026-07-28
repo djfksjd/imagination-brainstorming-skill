@@ -1,0 +1,633 @@
+{
+  "engine_version": "0.3.0",
+  "brief": "a ritual for closing a family bakery that has traded on one street for ninety years",
+  "skeleton": "A gathering held on the final trading day at which the shop is thanked, photographed and remembered aloud, ending with an object handed over to be kept.",
+  "user_confirmed": true,
+  "counts": {
+    "model_instincts": 12,
+    "user_exclusions": 2,
+    "matchable": 46,
+    "warn": 21,
+    "manual": 10
+  },
+  "model_instincts": [
+    "a last day open house with free bread",
+    "a farewell party on the final evening",
+    "a memory wall of photographs",
+    "a guest book for regulars to sign",
+    "the sign is taken down and handed to the founder's grandchild",
+    "a commemorative plaque on the shopfront",
+    "a final bake of the oldest recipe",
+    "a local newspaper piece about ninety years",
+    "a video interview with the family",
+    "the recipe book donated to the town archive",
+    "a candle-lit vigil outside the shop at closing time",
+    "a limited edition tote bag"
+  ],
+  "user_exclusions": [
+    "nothing that turns our closing into a public event for strangers to attend",
+    "no crying in front of the counter staff on their last shift"
+  ],
+  "allowed": [],
+  "entries": [
+    {
+      "id": "one-stop-shop",
+      "phrase": "one-stop shop",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "single-source-of-truth",
+      "phrase": "single source of truth",
+      "tier": "warn",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "low-hanging-fruit",
+      "phrase": "low-hanging fruit",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "move-the-needle",
+      "phrase": "move the needle",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "north-star",
+      "phrase": "north star",
+      "tier": "warn",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "secret-sauce",
+      "phrase": "secret sauce",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "10x",
+      "phrase": "10x",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "paradigm-shift",
+      "phrase": "paradigm shift",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "democratize",
+      "phrase": "democratize",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "supercharge",
+      "phrase": "supercharge",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "unlock-value",
+      "phrase": "unlock value",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "leverage-synergies",
+      "phrase": "leverage synergies",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "empower-users",
+      "phrase": "empower users",
+      "tier": "ban",
+      "group": "pitch-reflex",
+      "source": "deck"
+    },
+    {
+      "id": "ai-powered",
+      "phrase": "AI-powered",
+      "tier": "ban",
+      "group": "tech-veneer",
+      "source": "deck"
+    },
+    {
+      "id": "ai-driven",
+      "phrase": "AI-driven",
+      "tier": "ban",
+      "group": "tech-veneer",
+      "source": "deck"
+    },
+    {
+      "id": "blockchain-based",
+      "phrase": "blockchain-based",
+      "tier": "ban",
+      "group": "tech-veneer",
+      "source": "deck"
+    },
+    {
+      "id": "cloud-native",
+      "phrase": "cloud-native",
+      "tier": "warn",
+      "group": "tech-veneer",
+      "source": "deck"
+    },
+    {
+      "id": "smart-assistant",
+      "phrase": "smart assistant",
+      "tier": "ban",
+      "group": "tech-veneer",
+      "source": "deck"
+    },
+    {
+      "id": "personalized-feed",
+      "phrase": "personalized feed",
+      "tier": "warn",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "gamification",
+      "phrase": "gamification",
+      "tier": "ban",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "leaderboard",
+      "phrase": "leaderboard",
+      "tier": "warn",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "streaks",
+      "phrase": "streak",
+      "tier": "warn",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "badges",
+      "phrase": "badge",
+      "tier": "warn",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "chatbot",
+      "phrase": "chatbot",
+      "tier": "warn",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "dashboard-kpi",
+      "phrase": "KPI dashboard",
+      "tier": "ban",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "marketplace-two-sided",
+      "phrase": "two-sided marketplace",
+      "tier": "warn",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "social-network-for",
+      "phrase": "social network for",
+      "tier": "ban",
+      "group": "product-default",
+      "source": "deck"
+    },
+    {
+      "id": "netflix-for",
+      "phrase": "Netflix for",
+      "tier": "ban",
+      "group": "named-analogy",
+      "source": "deck"
+    },
+    {
+      "id": "uber-for",
+      "phrase": "Uber for",
+      "tier": "ban",
+      "group": "named-analogy",
+      "source": "deck"
+    },
+    {
+      "id": "airbnb-for",
+      "phrase": "Airbnb for",
+      "tier": "ban",
+      "group": "named-analogy",
+      "source": "deck"
+    },
+    {
+      "id": "the-x-of-y",
+      "phrase": "the Spotify of",
+      "tier": "ban",
+      "group": "named-analogy",
+      "source": "deck"
+    },
+    {
+      "id": "operating-system-for",
+      "phrase": "operating system for",
+      "tier": "ban",
+      "group": "named-analogy",
+      "source": "deck"
+    },
+    {
+      "id": "swiss-army-knife",
+      "phrase": "Swiss army knife",
+      "tier": "warn",
+      "group": "named-analogy",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-seamless",
+      "phrase": "seamless",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-frictionless",
+      "phrase": "frictionless",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-revolutionary",
+      "phrase": "revolutionary",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-game-changing",
+      "phrase": "game-changing",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-cutting-edge",
+      "phrase": "cutting-edge",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-next-generation",
+      "phrase": "next-generation",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-best-in-class",
+      "phrase": "best-in-class",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-world-class",
+      "phrase": "world-class",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-state-of-the-art",
+      "phrase": "state-of-the-art",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-innovative",
+      "phrase": "innovative",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-disruptive",
+      "phrase": "disruptive",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-groundbreaking",
+      "phrase": "groundbreaking",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-effortless",
+      "phrase": "effortless",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-magical",
+      "phrase": "magical",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-delightful",
+      "phrase": "delightful",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-turnkey",
+      "phrase": "turnkey",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-holistic",
+      "phrase": "holistic",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-synergistic",
+      "phrase": "synergistic",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-unparalleled",
+      "phrase": "unparalleled",
+      "tier": "ban",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-intuitive",
+      "phrase": "intuitive",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-robust",
+      "phrase": "robust",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-scalable",
+      "phrase": "scalable",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-powerful",
+      "phrase": "powerful",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-simple",
+      "phrase": "simple",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-elegant",
+      "phrase": "elegant",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-curated",
+      "phrase": "curated",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-bespoke",
+      "phrase": "bespoke",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-immersive",
+      "phrase": "immersive",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-unique",
+      "phrase": "unique",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "hollow-smart",
+      "phrase": "smart",
+      "tier": "warn",
+      "group": "hollow-adjective",
+      "source": "deck"
+    },
+    {
+      "id": "instinct-03",
+      "phrase": "a memory wall of photographs",
+      "tier": "ban",
+      "group": "first-instinct",
+      "source": "model"
+    },
+    {
+      "id": "instinct-06",
+      "phrase": "a commemorative plaque on the shopfront",
+      "tier": "ban",
+      "group": "first-instinct",
+      "source": "model"
+    },
+    {
+      "id": "instinct-09",
+      "phrase": "a video interview with the family",
+      "tier": "ban",
+      "group": "first-instinct",
+      "source": "model"
+    },
+    {
+      "id": "instinct-12",
+      "phrase": "a limited edition tote bag",
+      "tier": "ban",
+      "group": "first-instinct",
+      "source": "model"
+    }
+  ],
+  "manual_checks": [
+    {
+      "id": "instinct-01",
+      "statement": "a last day open house with free bread",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-02",
+      "statement": "a farewell party on the final evening",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-04",
+      "statement": "a guest book for regulars to sign",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-05",
+      "statement": "the sign is taken down and handed to the founder's grandchild",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-07",
+      "statement": "a final bake of the oldest recipe",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-08",
+      "statement": "a local newspaper piece about ninety years",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-10",
+      "statement": "the recipe book donated to the town archive",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "instinct-11",
+      "statement": "a candle-lit vigil outside the shop at closing time",
+      "source": "model",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "user-01",
+      "statement": "nothing that turns our closing into a public event for strangers to attend",
+      "source": "user",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    },
+    {
+      "id": "user-02",
+      "statement": "no crying in front of the counter staff on their last shift",
+      "source": "user",
+      "note": "too long to match literally - check this one by reading, not by grep"
+    }
+  ],
+  "structural_patterns": [
+    {
+      "id": "x-for-y",
+      "regex": "\\b(?:the )?(?:Uber|Netflix|Airbnb|Spotify|Tinder|Slack|Notion|Figma|Duolingo)\\s+(?:for|of)\\b",
+      "tier": "ban",
+      "why": "The concept is being defined as an existing company applied to a new noun. Nothing here is yours."
+    },
+    {
+      "id": "x-meets-y",
+      "regex": "\\b(?:it'?s|it is|this is|basically|essentially|think of it as|kind of)\\s+(?:like\\s+)?[A-Za-z]+\\s+meets\\s+[A-Za-z]+\\b",
+      "tier": "ban",
+      "why": "Two known things joined by a verb, offered as the explanation. Narrowed to the pitch frame on purpose: in a story brief, 'Alice meets Bob at the station' is a scene, not a cliche."
+    },
+    {
+      "id": "cross-between",
+      "regex": "\\bcross between\\b",
+      "tier": "ban",
+      "why": "The same failure, stated more honestly."
+    },
+    {
+      "id": "mix-of",
+      "regex": "\\b(?:a )?(?:mix|blend|fusion|mashup|combination) of\\b",
+      "tier": "warn",
+      "why": "Announces assembly. The parts should have stopped being separable."
+    },
+    {
+      "id": "but-for",
+      "regex": "\\bbut (?:with|for) (?:AI|blockchain|kids|enterprise|B2B)\\b",
+      "tier": "ban",
+      "why": "An existing product with a segment attached is a positioning, not a concept."
+    },
+    {
+      "id": "users-will-love",
+      "regex": "\\busers? will (?:love|enjoy|appreciate)\\b",
+      "tier": "warn",
+      "why": "An assertion about reception standing in for a property of the design."
+    },
+    {
+      "id": "simply-just",
+      "regex": "\\b(?:simply|just) (?:works|use|add)\\b",
+      "tier": "warn",
+      "why": "'Simply' marks the place where the hard part was skipped."
+    },
+    {
+      "id": "everyone-is-user",
+      "regex": "\\b(?:for )?(?:everyone|anyone who|all users)\\b",
+      "tier": "warn",
+      "why": "No audience has been chosen; boundaries are what make a concept designable."
+    },
+    {
+      "id": "in-the-future",
+      "regex": "\\bin the (?:near |far |distant )?future\\b",
+      "tier": "warn",
+      "why": "Moving the clock forward is not a premise change."
+    }
+  ],
+  "forbidden_moves": [
+    "Presenting three approaches where two exist only to make the third look reasonable.",
+    "Answering a premise question with a requirement, leaving the premise untouched.",
+    "Adding a feature in response to every concern until the concept has no shape.",
+    "Naming a familiar pattern with a new word and treating the word as the design.",
+    "Deciding what to build before establishing what it will refuse to do.",
+    "Writing a concept with no open questions, which means the unknowns were hidden rather than resolved.",
+    "Letting the recommended option be the only one described in enough detail to judge.",
+    "Converging on the first idea the user showed enthusiasm for, before the premises were tested.",
+    "Treating an analogy to an existing company as an explanation of the mechanism.",
+    "Deferring every hard decision to 'we'll validate that with users'."
+  ]
+}

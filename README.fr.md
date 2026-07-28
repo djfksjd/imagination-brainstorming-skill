@@ -136,29 +136,44 @@ Elle redistribue depuis un nouveau tirage, ajoute *tous les éléments du tour p
 
 ### Exécuter les scripts à la main
 
-Python 3.11, bibliothèque standard, rien à installer. Les scripts sont dans `skills/imagination-brainstorming/scripts/` ; écrivez les fichiers de travail dans un répertoire temporaire, jamais dans le dossier de la compétence.
+Python 3.11, bibliothèque standard, rien à installer. La compétence se trouve dans `skills/imagination-brainstorming/`, et toutes les commandes ci-dessous sont écrites pour être lancées depuis ce répertoire. Écrivez les fichiers de travail dans un répertoire temporaire, jamais dans le dossier de la compétence.
 
 ```bash
-# 1 · distribuer les familles de questions et trois cadres incompatibles
-python3 scripts/deal.py --brief "une façon de passer les transmissions dans le service" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · construire le contrat — deux fois, et l'ordre compte
-python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
-    --skeleton "une liste remplie à la fin du poste" --out /tmp/work
-#    …montrez-la à l'utilisateur, recueillez sa réponse, et seulement ensuite :
-python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
-    --skeleton "une liste remplie à la fin du poste" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · distribuer les familles de questions et trois cadres incompatibles
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · construire le contrat — deux fois, et l'ordre compte. --instincts est un
+#     fichier que vous écrivez : une réponse probable par ligne, douze en tout.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …montrez-le à l'utilisateur comme une liste d'exclusions, recueillez sa réponse, et seulement ensuite :
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · prouver que les trois approches en sont bien trois
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · passer à la barrière la spécification, son sidecar et le contrat ensemble — les trois sont requis
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+Tous les fichiers cités là sont livrés avec le dépôt : le bloc s'exécute tel quel et les quatre étapes se terminent par `0` ; l'étape 2 reproduit `references/example-banlist.json` à l'identique. Remplacez-les au fur et à mesure par ceux de votre propre séance.
+
+**`approaches.json` s'écrit à la main.** `deal.py` distribue les cadres ; vous écrivez une approche par cadre distribué dans un objet muni d'une clé `approaches` — un `id`, un `frame_id` pris dans le jeu de cadres, un `summary` d'au moins 86 unités, un `failure_mode` d'au moins 43 qui dit comment *celle-ci* échoue dans *ce* brief, un `frame_fit` d'au moins 36 qui dit ce qui, dans ce brief, occupe la place exigée par le cadre, et `unsafe_seat` à true sur exactement une d'entre elles. `references/decks/approaches-schema.json` documente chaque champ et chaque plancher appliqué par le contrôle ; `references/example-approaches.json` est un fichier qui passe et dont on peut copier la forme.
+
+Ces planchers se comptent en unités, pas en caractères, et ils sont **mesurés, pas supposés**. Un même passage — la scène de première utilisation la plus mince qui vaille d'être acceptée — a été traduit en latin, coréen, japonais, chinois, thaï, devanagari, hébreu et arabe, puis mesuré avec la fonction qui tourne réellement, à côté du même sujet écrit comme une description plate. Les scènes tombent entre 186 et 283 unités, les descriptions entre 41 et 64 : un seul nombre les sépare partout, et le plancher est le plus haut qui admette encore la scène légitime la plus mince dans l'écriture la plus dense. Ce qu'un seul nombre ne peut pas faire, c'est être également strict partout : le même contenu vaut environ un tiers d'unités en moins en chinois qu'en latin, donc cette barre serre davantage la prose latine. Elle est posée ainsi parce que refuser l'écriture légitime de quelqu'un dans sa propre langue est le pire des deux échecs.
+
+`frame_fit` est l'endroit où un cadre que le brief ne peut pas tenir devient visible. `designed-for-repair` — *supposez que cela casse souvent ; incluez la procédure de réparation et les pièces de rechange* — s'est retrouvé une fois au siège inconfortable pour un rite de fermeture qui n'a lieu qu'une seule fois, sans fabricant ni pièces de rechange, et l'ensemble est passé quand même. Si rien dans le brief ne peut occuper la place que le cadre nomme, dites-le et redistribuez avec `--run 2` plutôt que de l'argumenter. Le contrôle exige l'affirmation ; il ne peut pas vérifier qu'elle est vraie.
+
 `--confirmed` enregistre un consentement qui a déjà eu lieu. Le poser avant que l'utilisateur ait vu la liste est un mensonge dont dépend tout le reste de la chaîne, et la barrière n'a aucun moyen de le détecter — d'où deux appels plutôt qu'un drapeau.
+
+Substituer le contrat n'est pas gratuit — ce n'est pas impossible non plus : rien ici n'établit une provenance. La barrière le reconstruit à partir de ce que déclare `concept.json` et refuse tout fichier auquel manque l'un des réflexes brûlés, l'une des exclusions de l'utilisateur ou une entrée du jeu de clichés fourni ; les deux fichiers doivent porter le même squelette et le même brief, caractère pour caractère, et le brief de la liste d'interdits doit nommer un sujet, pas un mot. Ce jeu est appliqué à la spécification quel que soit le contrat qui arrive : remettre un fichier plus court ne donnera jamais un lint plus court. Ce que tout cela établit, c'est la cohérence entre deux fichiers écrits par la même main — substituer un contrat suppose de le réécrire, pas de le renommer. Par-dessus cela, les réflexes brûlés et vos propres exclusions sont recalculés **par le contenu** — comme l'union de tous les endroits où l'un ou l'autre fichier les consigne — et vérifiés dans une passe distincte qui ne lit aucun id, aucun palier ni le champ `allowed`, et qui n'honore aucune levée. Renommer un id, le faire entrer en collision avec un id du jeu de clichés, rétrograder une entrée, déplacer un énoncé entre champs ou entre les deux fichiers, le dupliquer ou supprimer l'une de ses lignes : rien de tout cela ne change s'il se déclenche, et chacune de ces voies a été ouverte à un moment. Ce que cela n'établit pas : rien ici ne détient une copie de vos exclusions que la session n'ait pas écrite, donc un énoncé supprimé de tous les champs des deux fichiers a simplement disparu.
 
 `cliche_lint.py` sert aux **brouillons en cours de séance**. Lancé sur une spécification terminée, il signalera la propre section d'interdits du document ; celui qui relit une spécification terminée, c'est `spec_gate.py`, qui excise d'abord ce passage.
 
@@ -174,17 +189,34 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 ### Ce que les barrières ne peuvent pas vérifier
 
 > [!IMPORTANT]
-> Ce sont des planchers. Elles prouvent que le travail a **été fait**, pas qu'il était **juste**. Trois choses passent toutes les barrières de ce dépôt :
+> Ce sont des planchers. Ils vérifient que le travail exigé **est là**, pas qu'il était **juste**. Trois choses passent toutes les barrières de ce dépôt :
 >
 > - **une justification qui retourne sa propre preuve** — un argument dont la prémisse, lue attentivement, soutient la conclusion inverse ;
 > - **un mécanisme attaquable selon ses propres termes** — par exemple un nombre qui change selon l'ordre de calcul, présenté comme la preuve de transparence du concept ;
 > - **trois approches qui n'en font qu'une** en trois vocabulaires. Le contrôle attrape la reformulation et les causes de mort communes ; il ne sait pas lire.
+>
+> La barrière en exige désormais deux de plus, sans prétendre juger ni l'une ni l'autre : le mode d'échec que l'approche retenue a elle-même écrit doit être **traité** dans `chosen.answers_failure_mode` — un concept qui déclarait son propre effondrement et passait outre franchissait la barrière du premier coup — et chaque approche doit dire ce qui, dans le brief, occupe son cadre. Dans les deux cas, la barrière vérifie que quelque chose a été écrit et vous le met sous les yeux ; elle ne peut pas vous dire si la réponse tient.
 >
 > Une quatrième passait et ne passe plus : les mêmes mots cités à l'intérieur d'une phrase qui les rejette. L'interdit, ce qui devient impossible, la scène de première utilisation et chaque question ouverte sont désormais marqués par `<!-- bind: … -->` et comparés au sidecar **à l'identique** — une fois chacun, dans leur propre section, en prose simple. Le score de similarité qu'ils remplacent ne distinguait pas *« nous interdisons X »* de *« nous avons envisagé d'interdire X mais l'autorisons »*. Et ni cette barrière ni le contrôle de divergence n'acceptent plus `--allow` : une exception accordée au moment du verdict est accordée par la partie que ce verdict concerne.
 >
 > Les trois se sont produites pendant la séance d'essai de cette compétence, et les trois ont été attrapées par une personne, pas par un script. Donc : avant que la spécification ne vous parvienne, faites-la attaquer par un second lecteur — un autre modèle, un collègue — en lui demandant d'argumenter qu'**elle perd**, pas qu'elle pourrait être améliorée. « Comment l'améliorer » vous rapporte du polissage. « Pourquoi perd-elle » vous rapporte la prémisse inversée.
 >
 > La compétence s'applique aussi à elle-même un **audit du sens de la preuve** : pour chaque *parce que* porteur, elle doit écrire la conclusion opposée que la même prémisse soutiendrait, et nommer ce que la partie décisionnaire peut réellement observer. C'est l'étape qui attrape *« le jury est une machine, donc notre registre interne est le différenciateur »* — une machine ne peut pas observer le registre interne, donc cette prémisse plaide pour l'inverse.
+>
+> Une liste d'exclusion éditée à la main peut ajouter son propre `structural_patterns[].regex`, et un motif de la forme `(a+)+` fait prendre à l'algorithme de correspondance de Python un temps exponentiel sur certaines entrées — une barrière qui ne répond jamais est, pour qui l'attend, indiscernable d'une barrière qui a laissé passer. Un tel motif est désormais refusé par son id avant même d'être exécuté. Le contrôle est un balayage déterministe qui repère la forme classique de répétition imbriquée, donc il réduit ce risque sans l'éliminer — une forme catastrophique qu'il ne reconnaît pas peut encore être lente — et sur macOS et Linux, un second filet de sécurité fondé sur le temps réel rattrape ce que le balayage manque ; ce filet est indisponible sous Windows. Une ligne longue est parcourue en entier par fenêtres de 4000 caractères qui se chevauchent, au lieu d'être tronquée à 4000 — la première version tronquait, si bien qu'une interdiction structurelle cessait silencieusement de se déclencher au-delà, ce qui est pire que le blocage qu'elle remplaçait. Si le budget de temps de la ligne est épuisé, le motif est nommé et refusé ; une correspondance plus longue que les 512 caractères de chevauchement et posée sur une frontière de fenêtre peut encore échapper.
+>
+> **`imagination-engine` tranche ce point dans l'autre sens, et le dit.** Sa barrière refuse purement et simplement de compiler tout `structural_patterns[].regex` fourni par l'utilisateur, et imprime un refus qui nomme le motif au lieu de l'exécuter — parce que cette barrière refuse déjà toute autre politique fournie à l'exécution (il n'y a là ni `--rubric`, ni `--min-mean`, ni `--allow` honoré), et parce qu'une défense fondée sur une minuterie fait dépendre ce qui a réellement été vérifié de la rapidité de la machine hôte, un verdict qui ne devrait pas varier d'un ordinateur à l'autre. Cette barrière-ci assume le coût plutôt que le refus : le balayage structurel et le plafond de caractères ci-dessus valent dans les deux cas, mais le minuteur `SIGALRM` qui rattrape ce que le balayage manque est réservé à POSIX — sous Windows, seuls le balayage et le plafond de caractères défendent donc la barrière, et même sous macOS ou Linux, un motif qui bloque sur une machine lente et passe sur une machine rapide est exactement le verdict dépendant de la machine que le refus de l'engine cherche à éviter. En passant d'une compétence à l'autre, il faut s'attendre à ce qu'un motif compilé ici en silence soit refusé par son nom là-bas.
+
+### Des briefs qui ne sont pas des produits
+
+Le processus, les familles de questions, les cadres et le contrat de spécification valent pour n'importe quel sujet — un monde narratif, une mécanique de jeu, un rite, une campagne, un format. Deux pièces de la mécanique sont plus étroites que cela, et mieux vaut savoir lesquelles :
+
+- **La liste de clichés est du vocabulaire de pitch et de produit** — one-stop shop, tableau de bord de KPI, l'Uber de X, gamification. Sur un brief narratif ou rituel, presque aucune ne se déclenchera. Autrement dit, la moitié vérifiable par machine du contrat ne fait pas grand-chose, et ce sont les réflexes et le squelette de la séance elle-même qui portent le poids. Les adjectifs creux et les gestes interdits, eux, valent partout.
+- **Un adjectif interdit peut être du vocabulaire ordinaire.** En fiction, *magical* et *delightful* désignent au lieu d'affirmer, et *« la région n'est pas magical »* a été refusée pour l'avoir écrit. Marquez ce passage sur place — `<!-- mention: hollow-magical -->la région n'est pas magical<!-- /mention -->` — la levée ne couvre que ce passage et cette règle. Elle ne peut pas vérifier que le mot est mentionné plutôt qu'employé ; elle rend l'affirmation explicite et relisible au lieu de laisser la levée en bloc comme seule issue. Le marqueur est borné : un identifiant de règle par marqueur, un paragraphe par passage (200 unités), à l'intérieur une négation ou le mot entre guillemets doubles, et cinq au maximum par document — et un premier réflexe ou l'une de vos propres exclusions ne peut jamais être levé ainsi, ni par cette voie ni par une autre. Un seul marqueur nommant tous les identifiants a un jour levé le contrat entier. La levée couvre exactement les caractères marqués : le passage marqué est vidé sur place et vérifié à part, de sorte qu'une phrase identique ailleurs dans le document est un autre passage et se déclenche toujours — autrefois un seul marqueur levait toutes les lignes du fichier identiques à celle qui était marquée. Les marqueurs doivent en outre se placer aux frontières de mots.
+
+Deux choses à prévoir plutôt qu'à découvrir : vos premiers réflexes seront plus souvent des propositions que des syntagmes nominaux, donc davantage d'entre eux atterriront dans les vérifications manuelles — ce sont des relectures, pas des notes à rédiger, et seules *vos propres* exclusions appellent une réponse écrite — et il est plus probable qu'un cadre distribué soit un cadre que le brief ne peut pas tenir, ce à quoi servent `frame_fit` et une redistribution.
+
+`references/example-ritual-concept.md` est un exemple complet exactement de cette forme : le rite de fermeture d'une boulangerie qui tient la même rue depuis quatre-vingt-dix ans, livré avec son contrat, ses approches et son sidecar, contrôlé par les deux mêmes commandes.
 
 ## Ce qu'elle ne fera pas
 
@@ -193,7 +225,7 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 > - **Prétendre que personne n'y a jamais pensé.** Invérifiable, donc interdit. Elle nomme les choses existantes les plus proches et énonce la différence.
 > - **Fabriquer de l'étrangeté.** Quand la réponse conventionnelle est la bonne, la compétence doit le dire en une phrase, sortir d'elle-même et faire le travail normal en dehors.
 > - **Rétrécir votre demande pour la rendre plus facile à spécifier.** Le périmètre est décomposé ouvertement, jamais rétréci en silence.
-> - **Faire croire qu'un contrôle réussi signifie une bonne idée.** Il prouve que le travail a été fait, pas que le concept est juste. La compétence le dit dans sa propre sortie.
+> - **Faire croire qu'un contrôle réussi signifie une bonne idée.** Il vérifie que les affirmations et les artefacts exigés sont présents, pas que le concept est juste. La compétence le dit dans sa propre sortie.
 
 ## Sous le capot
 
@@ -215,7 +247,12 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # une session complète, y compris ce qui a été coupé
 │   ├── example-concept.md      # la spec produite par cette session
 │   ├── example-concept.json    # son sidecar — les deux passent les contrôles et servent de fixtures
-│   └── decks/                  # familles de questions · cadres · clichés · schéma de spec
+│   ├── example-approaches.json # entrée de l'étape 3, dans la forme que lit divergence_check.py
+│   ├── example-banlist.json    # le contrat qui a servi à contrôler tout ce qui précède
+│   ├── example-ritual-*.{md,json,txt}  # un second exemple complet qui n'est ni un produit ni un service
+│   ├── example-instincts.txt   # les douze instincts dont il est issu
+│   ├── example-exclusions.txt  # et les trois exclusions de l'utilisateur
+│   └── decks/                  # familles de questions · cadres · clichés · schéma de spec · schéma d'approches
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

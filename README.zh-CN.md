@@ -136,29 +136,44 @@ codex plugin add imagination-brainstorming@djfksjd
 
 ### 自己跑这些脚本
 
-Python 3.11，只用标准库，无需安装。脚本在 `skills/imagination-brainstorming/scripts/`。工作文件一律写进临时目录，绝不要写进技能文件夹。
+Python 3.11，只用标准库，无需安装。技能在 `skills/imagination-brainstorming/`，下面每条命令都假定你已经进入那个目录。工作文件一律写进临时目录，绝不要写进技能文件夹。
 
 ```bash
-# 1 · 发出问题族与三个互不相容的取景框
-python3 scripts/deal.py --brief "病区交接班的方式" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · 建立契约 —— 调用两次，顺序很重要
-python3 scripts/banlist.py --brief "<简报>" --instincts instincts.txt \
-    --skeleton "在一班结束时填写的检查表" --out /tmp/work
-#    …给用户看，拿到回答之后，才可以：
-python3 scripts/banlist.py --brief "<简报>" --instincts instincts.txt \
-    --skeleton "在一班结束时填写的检查表" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · 发出问题族与三个互不相容的取景框
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · 建立契约 —— 调用两次，顺序很重要。--instincts 是你自己写的文件：
+#     每行一个最先想到的答案，写十二个。
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …作为排除清单给用户看，拿到回答之后，才可以：
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · 证明这三个方案确实是三个
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · 把规格、边车与契约一起送进网关 —— 三个都必需
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+上面提到的文件都随仓库一起发布，所以这段可以照抄照跑，四步都会以 `0` 结束；第 2 步会原样重建出 `references/example-banlist.json`。往下走的时候，把它们换成你自己这一场的文件即可。
+
+**`approaches.json` 要自己写。** `deal.py` 只负责发取景框，你按发到的每个取景框各写一个方案，放进一个带 `approaches` 键的对象里 —— `id`、取自取景框牌组的 `frame_id`、不少于 86 单位的 `summary`、不少于 43 单位、说明*这一个*方案在*这份*简报里会怎么垮掉的 `failure_mode`、不少于 36 单位、说明这份简报里什么东西填上了取景框所要求那个位置的 `frame_fit`，以及只在其中一个上为真的 `unsafe_seat`。所有字段和下限都写在 `references/decks/approaches-schema.json` 里，`references/example-approaches.json` 是可以照着抄形状的合格样例。
+
+这些下限按单位计，不按字符计，而且是**实测出来的，不是估算的**。我们把一段值得接受的、最薄的首次接触场景译成拉丁文、韩文、日文、中文、泰文、天城文、希伯来文和阿拉伯文，用真正在跑的那个函数去量，同时量了把同一题材写成平铺直叙说明的版本。场景落在 186 到 283 单位，说明落在 41 到 64 单位，所以一个数字就能在八种文字里把两者分开；下限取的是仍然放行最密文字中最薄那个正当场景的最高值。一个数字做不到的是在每种文字里同样严格：同样的内容在中文里比拉丁文少约三分之一的单位，所以这条线对拉丁文散文更紧。之所以这样定，是因为拒绝别人用自己语言写下的正当文字，是更坏的那种失败。
+
+`frame_fit` 正是「这份简报撑不住这个取景框」暴露出来的地方。`designed-for-repair` —— *假设它经常坏，写出维修流程和备件* —— 曾被发到一场只办一次的歇业仪式的高风险位上：一次性的仪式没有制作者，也没有备件，检查却照样放行。如果这份简报里没有任何东西能填上取景框要求的那个位置，就写明这一点，用 `--run 2` 重发，而不是硬把它论证下去。检查只要求你给出这个说法，无法核实说法是否为真。
+
 `--confirmed` 记录的是已经发生过的同意。在用户看到清单之前就打上它，是一个后续整条流水线都会依赖的谎言，而网关无从察觉 —— 所以它被设计成两次调用，而不是一个开关。
+
+换掉契约并不是白来的，但也谈不上换不了 —— 这里没有任何东西能证明来源。网关会依据 `concept.json` 所声明的内容重建契约，凡是缺了任何一条烧掉的直觉、用户自己的排除项，或内置陈词牌组中任何一条的文件，一律拒收；两份文件必须逐字记录同一个骨架和同一份简报，而禁用清单里的简报必须点出一个主题，而不是一个词。无论送进来的是什么契约，那副牌组都会照样拿来检查规格，所以递一份更短的文件绝不会换来一次更短的 lint。这一切确立的是：出自同一作者之手的两份文件彼此对得上 —— 想替换契约，就得重写，而不是改个名字。 在此之上，烧掉的直觉和你自己写下的排除项会**按内容**重新计算 —— 取两份文件记录它们的所有位置的并集 —— 并在一次单独的检查中比对：这次检查不读 id、不读层级、不读 `allowed` 字段，也不承认任何解除。改名 id、让它与内置陈词 id 冲突、把条目降级、把语句在字段之间或两份文件之间搬来搬去、复制它、删掉它的某一行 —— 这些都不会改变它是否触发；每一种都曾经是真实存在的绕过路径。它没有确立的是：这里没有一份不是本次会话写下的排除项副本，所以一条从两份文件的所有字段里都删掉的语句就是没了。
 
 `cliche_lint.py` 是给**会话中途的草稿**用的。拿它去跑一份成稿规格，它会标出规格自己的禁用清单章节；负责检查成稿的是 `spec_gate.py`，它会先把那一段切掉。
 
@@ -174,17 +189,34 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 ### 网关查不出来的东西
 
 > [!IMPORTANT]
-> 网关是地板。它证明功课**做过了**，不证明它**做对了**。有三样东西能通过本仓库的每一道网关：
+> 网关是地板。它检查该做的功课**在不在**，不检查它**对不对**。有三样东西能通过本仓库的每一道网关：
 >
 > - **推翻自己证据的论证** —— 仔细读它的前提，反而支持相反的结论；
 > - **能用自身逻辑反驳的机制** —— 例如把一个随计算顺序变化的数字，当作这个概念透明性的证据端出来；
 > - **其实是同一个想法的三个方案**。检查能抓住换词复述和共同的失败原因，但它不会阅读。
+>
+> 现在网关还多要两样，两样都不做好坏判断。所选方案自己写下的失败方式，必须在 `chosen.answers_failure_mode` 里得到**回答** —— 曾经有一个概念白纸黑字写下自己会怎么垮掉，还是一次就过了。另外，每个方案都要说清这份简报里的什么东西填上了它的取景框。这两件事上，网关只确认「写了没有」并把它摆到你面前，无法告诉你答得好不好。
 >
 > 第四样过去能通过，现在不能了：同一段文字被引用在一句否定它的话里。禁止条款、变得不可能的事、首次接触的场景以及每一个未决问题，现在都用 `<!-- bind: … -->` 标出，并与边车**逐字比对**——各一次，在各自的章节内，以规格自己的口吻而非引用。被它取代的相似度分数分不清*"我们禁止 X"*和*"我们考虑过禁止 X，但予以允许"*。而且这道网关和发散检查都不再接受 `--allow`：在裁定时刻给出的例外，是由被裁定的一方给出的。
 >
 > 三样都在本技能自己的试跑中真实发生过，三样都是人抓到的，不是脚本。所以：在规格送到你手上之前，让第二位读者攻击它 —— 另一个模型，或者一位同事 —— 并要求他们论证**它为什么会输**，而不是它还能怎么改进。"怎样能更好"换来的是打磨，"为什么会输"换来的是那条被颠倒的前提。
 >
 > 技能也会对自己跑一遍**证据方向审计**：对每一个承重的"因为"，它必须写下同一前提所支持的相反结论，并指明做决定的一方实际能观察到什么。抓住*"评审是机器，所以我们的内部记录才是差异点"*的正是这一步 —— 机器评审看不到内部记录，因此那个前提论证的恰恰是反面。
+>
+> 手工编辑的禁止清单可以自行添加 `structural_patterns[].regex`，而形如 `(a+)+` 的模式会让 Python 自身的匹配引擎在某些输入上花费指数级的时间——一道永不返回的关卡，对等待结果的一方来说，和通过了的关卡没有区别。这类模式现在会在运行之前就按 id 被拒绝。这项检查是对经典嵌套重复形态的确定性扫描，所以它只是缩小这类风险，而非消除——一个它认不出的灾难性形态仍可能很慢——在 macOS 和 Linux 上还有第二道基于挂钟时间的兜底，用来拦住扫描漏掉的情况；这道兜底在 Windows 上不可用。 长行不再在 4000 字符处截断，而是以 4000 字符的重叠窗口逐段扫完 —— 第一版是截断的，于是结构禁止规则在那之后悄悄不再触发，这比它所替代的卡死更糟。每行的时间预算用尽时会点名该模式并拒绝；一处长度超过 512 字符重叠区、又恰好跨在窗口边界上的匹配仍可能被漏掉。
+>
+> **`imagination-engine` 在这一点上做出了相反的决定，而且明说了。** 它的关卡整个拒绝编译任何用户提供的 `structural_patterns[].regex`，打印一条点名该模式而非运行它的拒绝——因为那道关卡本就拒绝一切运行时提供的策略（那里没有 `--rubric`，没有 `--min-mean`，也没有被采纳的 `--allow`），也因为基于计时器的防御会让实际被检查的内容取决于宿主机的速度快慢，这是一个不该随机器而变的判定。这道关卡选择承担代价而非拒绝：上面的结构扫描和字符上限在两边都成立，但用来兜住扫描漏掉之处的 `SIGALRM` 计时器仅限 POSIX，所以在 Windows 上只有扫描和字符上限在守卫这道关卡；即便在 macOS 或 Linux 上，一个在慢机器上卡住、在快机器上通过的模式，正是 engine 的拒绝设计要避免的那种随机器而变的判定。在两个技能之间切换时，应当预料到在这里悄悄编译通过的模式，到了那边会被点名拒绝。
+
+### 不是产品的简报
+
+流程、问题家族、取景框和规格契约适用于任何题材 —— 故事世界、游戏机制、仪式、活动、形式皆可。只有两处机件比这窄，知道是哪两处更好：
+
+- **陈词滥调的短语表是路演和产品的词汇** —— one-stop shop、KPI 仪表盘、Uber for X、游戏化。在故事或仪式的简报里，它们几乎一条都不会触发。这意味着契约中可机检的那一半几乎不干活，扛住分量的是这一场自己的直觉和骨架。空心形容词和禁用招式则在哪里都适用。
+- **被禁的形容词可能只是寻常词汇。** 在虚构里，*magical* 和 *delightful* 是指称而非主张，而 *"这片地区并不 magical"* 曾因为这么写而被拒。就地把那一段标出来 —— `<!-- mention: hollow-magical -->the region is not magical<!-- /mention -->` —— 解除只对那一段、那一条规则生效。它无法核实这个词到底是提及还是使用；它做的是把这个说法摆到明面上、可供复核，而不是让「整条规则一起解除」成为唯一出口。 标记是有上限的：一个标记只解除一条规则 id，一段一处（200 单位），段内要有否定或用双引号括起的词，整篇最多五处 —— 而最初的本能反应和你自己写下的排除项，无论走这条路还是别的路，都无法被解除。曾经一个列出全部 id 的标记就解除了整份约定。 解除只精确覆盖被标记的那些字符：被标记的一段会就地清空并单独检查，所以文档别处一模一样的句子是另一段，照样会被拦下 —— 曾经一个标记会解除文件中所有与被标记行相同的行。标记必须落在词边界上。
+
+有两件事值得先知道而不是撞上：你最初的直觉里从句会多于名词短语，因此落进人工检查的条目会变多 —— 那些是「回头再读一遍」，不是要你写的笔记，需要写下答复的只有*你自己*的排除项；另外，发到一个简报撑不住的取景框的概率也更高，这正是 `frame_fit` 和重发存在的理由。
+
+`references/example-ritual-concept.md` 就是这种形状的完整样例：一家在同一条街上做了九十年的面包店的歇业仪式，连同它的契约、方案和 sidecar 一起随仓库发布，用同样的两条命令过闸。
 
 ## 它不会做的事
 
@@ -193,7 +225,7 @@ python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
 > - **宣称"从没有人想到过"。** 无法验证，因此被禁止。它改为点名最接近的既有事物并说明差别。
 > - **硬造陌生感。** 当常规答案就是正确答案时，技能有义务用一句话说明，然后正常干活。
 > - **为了好写规格而悄悄缩小你的请求。** 范围只会被公开拆解，不会被暗中收窄。
-> - **把过闸当成好点子的证据。** 那只证明工作做过了，不证明它是对的——技能自己会这么说。
+> - **把过闸当成好点子的证据。** 那只说明该有的断言和产物都在，不说明它是对的——技能自己会这么说。
 
 ## 内部构造
 
@@ -215,7 +247,12 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # 一次完整会话，含被砍掉的方案
 │   ├── example-concept.md      # 那次会话产出的规格
 │   ├── example-concept.json    # 它的伴随文件——两者都过闸、都是测试夹具
-│   └── decks/                  # 问题族 · 框架 · 陈词滥调 · 规格模式
+│   ├── example-approaches.json # 第 3 阶段的输入，divergence_check.py 读的形状
+│   ├── example-banlist.json    # 上面这些过闸时用的契约
+│   ├── example-ritual-*.{md,json,txt}  # 第二个完整样例：既不是产品也不是服务
+│   ├── example-instincts.txt   # 建立该契约的十二条直觉
+│   ├── example-exclusions.txt  # 以及用户自己的三条
+│   └── decks/                  # 问题族 · 框架 · 陈词滥调 · 规格模式 · 方案模式
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

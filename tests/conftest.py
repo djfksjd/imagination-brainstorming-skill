@@ -10,6 +10,11 @@ from pathlib import Path
 
 import pytest
 
+# The brief the shipped example was built with. The gate requires the ban list
+# and the sidecar to record the same brief string, so a fixture contract has to
+# carry the real one.
+BRIEF = "a way for our ward to hand over shifts"
+
 REPO = Path(__file__).resolve().parent.parent
 SKILL = REPO / "skills" / "imagination-brainstorming"
 SCRIPTS = SKILL / "scripts"
@@ -52,16 +57,41 @@ def example(references: Path) -> dict:
 
 @pytest.fixture
 def run():
-    def _run(script: str, *args: str, stdin: str | None = None) -> Result:
+    def _run(script: str, *args: str, stdin: str | None = None, timeout: float | None = None) -> Result:
         proc = subprocess.run(
             [sys.executable, str(SCRIPTS / script), *args],
             input=stdin,
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
         return Result(proc)
 
     return _run
+
+
+@pytest.fixture(scope="session")
+def schema():
+    sys.path.insert(0, str(SCRIPTS))
+    from engine import load_deck  # noqa: E402
+    return load_deck("spec-schema")
+
+
+@pytest.fixture
+def check(banlist, schema):
+    """Run check_concept directly and return its failures as one string. Shared
+    because the length floors are now exercised from two files."""
+    sys.path.insert(0, str(SCRIPTS))
+    import spec_gate  # noqa: E402
+    from engine import load_banlist, load_deck  # noqa: E402
+
+    frames, cliches = load_deck("frames"), load_deck("cliches")
+    contract = load_banlist(str(banlist))
+
+    def _check(concept: dict) -> str:
+        return " | ".join(spec_gate.check_concept(concept, schema, frames, contract, cliches)["failures"])
+
+    return _check
 
 
 @pytest.fixture
@@ -88,7 +118,7 @@ def banlist(tmp_path: Path, run, instincts_file: Path, user_file: Path, skeleton
     """The contract the shipped example was built against: same instincts, same
     user exclusions, signed."""
     res = run(
-        "banlist.py", "--brief", "ward handover", "--instincts", str(instincts_file),
+        "banlist.py", "--brief", BRIEF, "--instincts", str(instincts_file),
         "--user", str(user_file), "--skeleton", skeleton, "--confirmed", "--out", str(tmp_path),
     )
     assert res.code == 0, res

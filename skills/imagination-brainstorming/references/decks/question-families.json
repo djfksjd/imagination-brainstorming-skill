@@ -1,7 +1,7 @@
 {
   "deck": "question-families",
   "version": "0.3.0",
-  "note": "Question types for premise excavation. Ordinary requirements questions ('who is the user, what are the constraints, what does success look like') are premise-preserving: they refine the idea the person already has. Each family here is designed to expose something the brief takes for granted. Ask one at a time, in the user's language, phrased for their actual brief - never paste a template phrasing verbatim.",
+  "note": "Question types for premise excavation, phrased to work on any subject - a product, a service, a story world, a game mechanic, a ritual, a campaign, a format. Where a family says 'user', read whoever this is done to or for. Question types for premise excavation. Ordinary requirements questions ('who is the user, what are the constraints, what does success look like') are premise-preserving: they refine the idea the person already has. Each family here is designed to expose something the brief takes for granted. Ask one at a time, in the user's language, phrased for their actual brief - never paste a template phrasing verbatim.",
   "families": [
     {
       "id": "unstated-premise",
@@ -34,7 +34,7 @@
         "What would make this a success for someone who never uses it?"
       ],
       "listens_for": "A second, more honest goal hiding behind the stated one.",
-      "anti_pattern": "Asking for KPIs. That confirms the existing metric instead of testing it."
+      "anti_pattern": "Asking what the measure of success is. That confirms the existing yardstick - takings, attendance, playtime, reach - instead of testing it."
     },
     {
       "id": "constraint-inversion",
@@ -55,8 +55,8 @@
         "Who is affected by this without ever choosing to use it?",
         "Who should look at this and correctly conclude it is not for them?"
       ],
-      "listens_for": "'Everyone' means the audience has not been chosen. Keep going.",
-      "anti_pattern": "Asking for a target persona. That names a buyer, not a boundary."
+      "listens_for": "'Everyone' means nobody has been chosen. Keep going.",
+      "anti_pattern": "Asking who the audience is. That names whoever it is aimed at, not whom it excludes - and the boundary is the useful half."
     },
     {
       "id": "must-remain-impossible",
@@ -64,7 +64,7 @@
       "purpose": "Every real design forbids something; a design that forbids nothing is a wish list.",
       "prompts": [
         "What should this make harder or outright impossible, on purpose?",
-        "What is the thing you never want a user of this to be able to do, even when they ask nicely?"
+        "What is the thing you never want anyone inside this to be able to do, even when they ask nicely?"
       ],
       "listens_for": "A real refusal with a cost attached. 'We'd never do anything bad' is not one.",
       "anti_pattern": "Asking about non-goals. Non-goals are things you skipped; this is about things you actively prevent."
@@ -78,7 +78,7 @@
         "Have you tried a version of this before? What did you learn that you have not written down?"
       ],
       "listens_for": "Causes of death. If the same cause is still present, the new idea inherits it.",
-      "anti_pattern": "Asking about competitors. You want post-mortems, not a landscape."
+      "anti_pattern": "Asking what else is out there. You want post-mortems - what was tried and what killed it - not a survey."
     },
     {
       "id": "cost-and-obligation",
@@ -111,7 +111,7 @@
         "How would someone leave this, and what do they take with them?"
       ],
       "listens_for": "Whether an ending exists at all. If nothing can end, nothing can be committed to.",
-      "anti_pattern": "Asking about the roadmap. A roadmap is growth; this is termination."
+      "anti_pattern": "Asking what comes next. What comes next is continuation; this is about the end."
     },
     {
       "id": "scale-break",

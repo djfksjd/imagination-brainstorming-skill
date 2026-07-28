@@ -262,3 +262,37 @@ def test_unreadable_concept_is_a_usage_error(gate, tmp_path):
     path = tmp_path / "broken.json"
     path.write_text("{not json", encoding="utf-8")
     assert gate(str(path)).code == 1
+
+
+# --- the chosen approach's own stated cause of death -----------------------
+#
+# `spec_gate.py` did not read `failure_mode` at all. It passed, first try and
+# without comment, a game mechanic whose own spec said the group "either
+# invents a tracker - restoring the artefact the frame removed - or lets the
+# rule quietly lapse". The spec declared its own collapse and nothing looked.
+
+
+def test_a_concept_that_never_answers_its_own_failure_mode_is_refused(gate, concept_path, concept):
+    del concept["chosen"]["answers_failure_mode"]
+    res = gate(concept_path(concept), "--json")
+    assert res.code == 2
+    assert any("chosen.answers_failure_mode" in f and "declares its own collapse" in f
+               for f in res.json()["failures"])
+
+
+def test_the_answer_may_not_be_the_failure_restated(gate, concept_path, concept):
+    chosen_id = concept["chosen"]["approach_id"]
+    declared = next(a["failure_mode"] for a in concept["approaches"] if a["id"] == chosen_id)
+    concept["chosen"]["answers_failure_mode"] = declared
+    res = gate(concept_path(concept), "--json")
+    assert res.code == 2
+    assert any("restates the failure mode" in f for f in res.json()["failures"])
+
+
+def test_the_declared_failure_is_put_in_front_of_the_reader(gate, references):
+    """The gate cannot judge whether a declared failure is fatal. It can refuse
+    to let one pass unexamined."""
+    res = gate(str(references / "example-concept.json"), "--json")
+    assert res.code == 0, res.out
+    assert any("the chosen approach fails like this" in w and "not that it works" in w
+               for w in res.json()["warnings"])

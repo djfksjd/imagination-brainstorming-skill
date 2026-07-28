@@ -1,0 +1,31 @@
+{
+  "approaches": [
+    {
+      "id": "the-early-goodbye",
+      "frame_id": "reverse-order",
+      "unsafe_seat": false,
+      "chosen": true,
+      "summary": "The farewell is held six weeks before the shutters come down for good, and the last trading day is deliberately left as an ordinary Tuesday: same opening hour, same bread, no speeches. Everyone who wants to say something says it while the shop is still working, so the goodbye happens inside the life of the place rather than over its body. The family spends the six weeks afterwards winding the business up in peace, and the street watches the shop simply stop rather than end.",
+      "failure_mode": "The last day arrives anyway. At three in the afternoon the mother is alone behind a counter nobody came to, six weeks after the town already said goodbye, and the ending she has to live through is the one nobody designed. The rite protected the family from a public last day and left them with a private one they were told would not matter.",
+      "frame_fit": "The inverted order is safe enough to accept because the shop is still trading when the goodbye happens: anyone who finds the farewell premature can come back the following Tuesday and buy a loaf, which is the proof that nothing has been taken away early."
+    },
+    {
+      "id": "the-inheritors-clause",
+      "frame_id": "the-absent-party",
+      "unsafe_seat": true,
+      "chosen": false,
+      "summary": "The rite is written for the people who cannot be in the room: whoever takes the lease next, the customers who moved away decades ago, and the grandchildren who never worked a shift here. It consists of three obligations the family accepts in front of witnesses - what is left in the shop for the next tenant, what is sent to those who left the street, and what the family may never sell. The people present are there to hold the family to promises made to people who are not.",
+      "failure_mode": "Nobody in the room wants it. The family are asked to spend their last evening making binding promises to a tenant they have not met and grandchildren who may never care, and the neighbours who came to say thank you find themselves at a legal proceeding. The obligations are accepted, quietly resented, and abandoned within a year.",
+      "frame_fit": "The absent parties' interest is enforced by a written clause in the lease handover and a letter held by the family solicitor, both read out on the night, so the promise survives the evening that made it rather than depending on anyone's memory of a feeling."
+    },
+    {
+      "id": "the-refusal-list",
+      "frame_id": "abuse-case-first",
+      "unsafe_seat": false,
+      "chosen": false,
+      "summary": "The worst realistic use decides the shape: a ninety-year closing is exactly the kind of story a developer, a councillor or a local paper will borrow for its own purposes. So the rite is built as a set of refusals, agreed and signed before anything else is planned - who may photograph, who may speak, what may be quoted, and what happens to the shop's name afterwards. Whatever survives the refusals is the ceremony.",
+      "failure_mode": "A farewell defined by what is forbidden is a joyless one. The family spend the evening policing a list instead of being thanked, the neighbours feel accused of an intention they never had, and the warmth the closing was supposed to hold is spent on enforcement.",
+      "frame_fit": "The harm is the shop's ending being used as material by someone with a use for it, and the structural feature that blocks it is that the right to speak, photograph and quote is granted in writing beforehand by the family, and by nobody else, for one evening only."
+    }
+  ]
+}

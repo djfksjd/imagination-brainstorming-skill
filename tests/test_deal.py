@@ -110,3 +110,32 @@ def test_human_output_carries_the_rules(run):
     assert res.code == 0
     assert "unsafe seat" in res.out
     assert "One question per message" in res.out or "one question per message" in res.out.lower()
+
+
+def test_human_output_shows_the_real_frame_id(run):
+    """A user who follows only the printed output (never opens deal.json) writes
+    approaches[].frame_id from what they read here. divergence_check.py validates
+    frame_id against the deck's frame ids, not against the category label - so the
+    printed line must show the frame_id itself, not just the category it belongs to."""
+    payload = deal(run)
+    res = run("deal.py", "--brief", BRIEF)
+    assert res.code == 0
+    for a in payload["approaches"]:
+        assert f"[{a['frame_id']}]" in res.out, (
+            f"printed output never shows frame_id {a['frame_id']!r}; "
+            "a user copying the bracketed token would write the category instead"
+        )
+        # The category alone must not read as if it were sufficient by itself:
+        # it has to be visibly labelled as the category, distinct from frame_id.
+        assert f"category: {a['category']}" in res.out
+
+
+def test_bracketed_category_token_alone_would_be_wrong(run, decks):
+    """Guard against ever regressing to printing '[category]' as the sole token:
+    every category in the deck has more than one frame, so a category is never
+    a valid frame_id on its own."""
+    frames = decks["frames"]
+    by_cat: dict[str, list[str]] = {}
+    for f in frames["frames"]:
+        by_cat.setdefault(f["category"], []).append(f["id"])
+    assert all(len(ids) > 1 for ids in by_cat.values())

@@ -33,20 +33,26 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
-        text_units,
+        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
+        distinct_ratio, extract_mentions, is_matchable_phrase, jaccard, lint_document, load_banlist,
+        load_deck, lint_text, mention_bound_failures, mention_placement_failures, normalize,
+        protected_lint_entries, protected_statements, read_json_arg, releasable_ids, require_mapping,
+        strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
+    from banlist import classify as classify_exclusions  # type: ignore
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
-        text_units,
+        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
+        distinct_ratio, extract_mentions, is_matchable_phrase, jaccard, lint_document, load_banlist,
+        load_deck, lint_text, mention_bound_failures, mention_placement_failures, normalize,
+        protected_lint_entries, protected_statements, read_json_arg, releasable_ids, require_mapping,
+        strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
+    from banlist import classify as classify_exclusions  # type: ignore
 
 GATE_FAIL = 2
 MIN_QUESTION_TOKENS = 6
@@ -146,8 +152,191 @@ def check_padding(label: str, value: str, threshold: float, failures: list[str])
         failures.append(f"{label}: repeated filler rather than content ({distinct_ratio(value):.2f} distinct)")
 
 
+def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
+                    cliches: dict[str, Any], warnings: list[str] | None = None) -> list[str]:
+    """Rebuild the ban contract from what the sidecar declares and require the
+    supplied file to contain it.
+
+    A gate that reads whatever file is handed to it under `--banlist` is not
+    gating stage 2 at all: a one-entry list written by the caller turned a
+    76-phrase lint into a one-phrase lint and, because the user's long
+    exclusions live in `manual_checks`, silently discharged every check the
+    user personally asked for. So the contract is replayed the way the draw is
+    replayed next door: the instincts and exclusions the sidecar claims are
+    reclassified here, with the same rules `banlist.py` used, and every
+    resulting ban and manual check must be present in the file. The bundled
+    cliche deck must be present too, minus only the ids the contract itself
+    released while it was being built.
+
+    Containment rather than equality, deliberately: a later contract may add
+    bans (`--extra`, a second round of exclusions) and adding bans cannot
+    weaken a verdict. Removing them can, and that is what this refuses.
+    """
+    failures: list[str] = []
+
+    instincts = [v for v in (contract.get("model_instincts") or []) if isinstance(v, str) and v.strip()]
+    exclusions = [v for v in (contract.get("user_exclusions") or []) if isinstance(v, str) and v.strip()]
+
+    supplied_entries = [e for e in banlist.get("entries", []) if isinstance(e, dict)]
+    supplied_phrases = {normalize(e.get("phrase", "")) for e in supplied_entries}
+    supplied_ids = {e.get("id") for e in supplied_entries}
+    supplied_manual = {
+        normalize(m.get("statement", "")) for m in banlist.get("manual_checks", []) if isinstance(m, dict)
+    }
+
+    expected_entries: list[dict[str, Any]] = []
+    expected_manual: list[dict[str, str]] = []
+    classify_exclusions(instincts, "instinct", "first-instinct", "model", expected_entries, expected_manual)
+    classify_exclusions(exclusions, "user", "user-exclusion", "user", expected_entries, expected_manual)
+
+    # A phrase present at 'warn' or 'manual' tier is a deletion with the entry
+    # left in place: `warn` never fails the gate and `manual` is skipped by the
+    # lint entirely, so the sidecar's own instincts passed through both.
+    supplied_tiers: dict[str, set[str]] = {}
+    for e in supplied_entries:
+        supplied_tiers.setdefault(normalize(e.get("phrase", "")), set()).add(str(e.get("tier")))
+    retiered = [
+        e["phrase"] for e in expected_entries
+        if normalize(e["phrase"]) in supplied_phrases
+        and "ban" not in supplied_tiers.get(normalize(e["phrase"]), set())
+    ]
+    if retiered:
+        failures.append(
+            f"{len(retiered)} phrase(s) the sidecar says were burned are in the ban list below ban tier "
+            f"({', '.join(retiered[:3])}...) - a burnt instinct and a user exclusion are bans, and "
+            "re-tiering one to 'warn' or 'manual' removes it from the verdict without removing it from "
+            "the file"
+        )
+
+    missing_bans = [e["phrase"] for e in expected_entries if normalize(e["phrase"]) not in supplied_phrases]
+    if missing_bans:
+        failures.append(
+            f"the ban list is missing {len(missing_bans)} phrase(s) the sidecar says were burned "
+            f"({', '.join(missing_bans[:3])}...) - this is not the contract this session built, and a "
+            "substituted contract lints against a shorter list than the user signed"
+        )
+    missing_manual = [m["statement"] for m in expected_manual if normalize(m["statement"]) not in supplied_manual]
+    if missing_manual:
+        failures.append(
+            f"the ban list is missing {len(missing_manual)} of the user's long exclusions "
+            f"({missing_manual[0][:60]}...) - dropping them from the file is how every manual check "
+            "gets discharged without being answered"
+        )
+
+    # `allowed` is read here for one purpose only: to say why a bundled entry is
+    # absent from the file. It grants nothing at lint time - see lint_entries.
+    # An instinct or a user exclusion is not releasable by anything the artefact
+    # says, and that is enforced rather than asserted: `releasable_ids()` in
+    # engine.py holds every release, whatever route it arrives by, to the
+    # bundled deck, and a mention marker naming one is refused by
+    # `mention_bound_failures`. This comment used to say the same thing while a
+    # mention marker released both.
+    deck = deck_lint_entries(cliches)
+    known_ids = {e["id"] for e in deck}
+    allowed = banlist.get("allowed", [])
+    if not isinstance(allowed, list) or any(not isinstance(i, str) for i in allowed):
+        failures.append("the ban list's 'allowed' field must be a list of cliche ids")
+        allowed = []
+    unknown = sorted(set(allowed) - known_ids)
+    if unknown:
+        failures.append(
+            f"the ban list releases id(s) that are not in the cliche deck: {', '.join(unknown)}"
+        )
+    missing_deck = [e["id"] for e in deck if e["id"] not in supplied_ids and e["id"] not in set(allowed)]
+    if missing_deck:
+        failures.append(
+            f"the ban list is missing {len(missing_deck)} entries of the bundled cliche deck "
+            f"({', '.join(missing_deck[:3])}...) - rebuild it with banlist.py rather than by hand"
+        )
+    if allowed and warnings is not None:
+        warnings.append(
+            f"the ban list releases {len(allowed)} cliche id(s) ({', '.join(sorted(allowed)[:3])}); this gate "
+            "does not honour releases - a file cannot exempt itself from the verdict it is being judged by, "
+            "so those phrases are still linted here"
+        )
+    return failures
+
+
+def lint_entries(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[str, Any]]:
+    """What the spec is linted against: the bundled deck, plus the contract.
+
+    The deck goes in first and wins. Two rules follow, and each closes a hole
+    that was open in a version of this file.
+
+    A supplied entry carrying a bundled id does not displace it. Dedup used to
+    be by id alone with the caller's copy processed first, so a contract could
+    carry `{"id": "hollow-seamless", "tier": "warn"}` and the deck's ban-tier
+    entry was never added - the deck was displaceable by the file under
+    judgement. The first fix for that *dropped* the supplied entry, which was
+    itself the next hole: renaming a burnt instinct's id to a bundled deck id
+    deleted the instinct's phrase from the lint, silently, exit 0. So the entry
+    is re-keyed instead of dropped. It keeps its phrase, loses the borrowed id,
+    and is linted under `supplied:<id>` - which is not a deck id, so nothing can
+    release it either. Both directions are now closed: the deck cannot be
+    demoted, and a supplied phrase cannot be deleted by colliding with it.
+
+    `allowed` is not read here at all. It is an assertion made by the artefact
+    being judged, and honouring it made naming a cliche id in the ban list
+    enough to release that cliche from the lint - the same bypass as a `--allow`
+    flag at verdict time, only cheaper. A release recorded by `banlist.py
+    --allow` still shortens the drafting lint (`cliche_lint.py`) and is still
+    accepted by the replay as a reason for the entry to be absent from the file;
+    it buys nothing at this gate. Releasing a bundled cliche at the gate means
+    changing the deck in the repository, where the change is reviewed outside
+    the session that wants it.
+    """
+    deck = deck_lint_entries(cliches)
+    reserved = {e["id"] for e in deck}
+    out: list[dict[str, Any]] = list(deck)
+    seen = {f"{e['id']}\x1f{normalize(str(e['phrase']))}" for e in deck}
+    deck_phrases = {normalize(str(e["phrase"])) for e in deck}
+    for entry in banlist.get("entries", []):
+        if not isinstance(entry, dict):
+            continue
+        phrase = normalize(str(entry.get("phrase", "")))
+        if entry.get("id") in reserved:
+            if phrase in deck_phrases:
+                continue  # the deck's own copy is already in, at the deck's tier
+            entry = dict(entry, id=f"supplied:{entry.get('id')}")
+        key = f"{entry.get('id')}\x1f{phrase}"
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(entry)
+    return out
+
+
+def lint_patterns(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[str, Any]]:
+    """The structural patterns, deck first and likewise not displaceable.
+
+    A supplied pattern bearing a bundled id used to replace it, so setting
+    `x-for-y` to the regex `$^` deleted a shipped structural ban. Dropping it
+    instead deleted the supplied pattern, which is the same defect pointed the
+    other way, so a supplied pattern whose regex differs from the deck's is
+    re-keyed under `supplied:<id>` and kept.
+    """
+    deck = list(cliches["structural_patterns"])
+    seen = {str(p.get("id")) for p in deck}
+    deck_regex = {str(p.get("id")): str(p.get("regex")) for p in deck}
+    out: list[dict[str, Any]] = list(deck)
+    for pattern in banlist.get("structural_patterns", []):
+        if not isinstance(pattern, dict):
+            continue
+        pid = str(pattern.get("id"))
+        if pid in deck_regex:
+            if str(pattern.get("regex")) == deck_regex[pid]:
+                continue
+            pattern = dict(pattern, id=f"supplied:{pid}")
+            pid = str(pattern["id"])
+        if pid in seen:
+            continue
+        seen.add(pid)
+        out.append(pattern)
+    return out
+
+
 def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[str, Any],
-                  banlist: dict[str, Any]) -> dict[str, Any]:
+                  banlist: dict[str, Any], cliches: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     warnings: list[str] = []
     counts = schema["counts"]
@@ -156,7 +345,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
 
     brief = text_of(concept.get("brief"))
     if text_units(brief) < mins["brief"]:
-        failures.append(f"brief: needs at least {mins['brief']} chars - state what was asked and what you learned it actually is")
+        failures.append(f"brief: needs at least {mins['brief']} units - state what was asked and what you learned it actually is")
     check_padding("brief", brief, thresholds["min_distinct_ratio"], failures)
 
     # --- premises -----------------------------------------------------------
@@ -185,8 +374,8 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 else:
                     seen[key] = i
             why = text_of(p.get("why"))
-            if len(why) < mins["premise_why"]:
-                failures.append(f"premises[{i}].why: needs at least {mins['premise_why']} chars")
+            if text_units(why) < mins["premise_why"]:
+                failures.append(f"premises[{i}].why: needs at least {mins['premise_why']} units")
             check_padding(f"premises[{i}].why", why, thresholds["min_distinct_ratio"], failures)
         check_padding("premises_note", text_of(concept.get("premises_note")),
                       thresholds["min_distinct_ratio"], failures)
@@ -201,7 +390,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             # inventing a second inversion to hit a quota is worse than saying
             # the others held.
             failures.append(
-                f"only {broken} premise was overturned; add premises_note ({mins['premises_note']}+ chars) "
+                f"only {broken} premise was overturned; add premises_note ({mins['premises_note']}+ units) "
                 "explaining why the others held rather than inventing an inversion"
             )
 
@@ -223,7 +412,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 failures.append("banlist_contract.model_instincts: duplicates - the list must hold distinct answers")
         skeleton = text_of(contract.get("skeleton"))
         if text_units(skeleton) < mins["skeleton"]:
-            failures.append(f"banlist_contract.skeleton: needs at least {mins['skeleton']} chars naming the shared structure")
+            failures.append(f"banlist_contract.skeleton: needs at least {mins['skeleton']} units naming the shared structure")
         if contract.get("user_confirmed") is not True:
             failures.append(
                 "banlist_contract.user_confirmed is not true - present the contract to the user as a list of "
@@ -276,8 +465,39 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                     "forbids": " - a design that forbids nothing is a wish list",
                     "impossible_now": " - name what this makes impossible that was possible before",
                 }[field]
-                failures.append(f"chosen.{field}: needs at least {mins[key]} chars{hint}")
+                failures.append(f"chosen.{field}: needs at least {mins[key]} units{hint}")
             check_padding(f"chosen.{field}", value, thresholds["min_distinct_ratio"], failures)
+        # The approach the session chose wrote down how it fails. Nothing read
+        # it: a mechanic whose own failure_mode said the group "either invents
+        # a tracker - restoring the artefact the frame removed - or lets the
+        # rule quietly lapse" passed here first try, without comment. The gate
+        # cannot judge whether a declared failure is fatal, or whether an
+        # answer to it is any good. It can require that the answer exists, is
+        # not the failure restated back, and is put in front of whoever reads
+        # the verdict next to the failure it answers.
+        declared = ""
+        if isinstance(approaches, list):
+            for a in approaches:
+                if isinstance(a, dict) and text_of(a.get("id")) == text_of(chosen.get("approach_id")):
+                    declared = text_of(a.get("failure_mode"))
+        answer = text_of(chosen.get("answers_failure_mode"))
+        if text_units(answer) < mins["answers_failure_mode"]:
+            failures.append(
+                f"chosen.answers_failure_mode: needs at least {mins['answers_failure_mode']} units - the "
+                f"chosen approach states how it fails ('{declared[:70]}...') and the concept has to say "
+                "what it does about that. A spec that declares its own collapse and moves on is worse "
+                "than one that never thought about it"
+            )
+        check_padding("chosen.answers_failure_mode", answer, thresholds["min_distinct_ratio"], failures)
+        if declared and answer:
+            warnings.append(
+                f"the chosen approach fails like this: '{declared[:120]}'. Read the answer against it "
+                "yourself - the gate checks that one was written, not that it works"
+            )
+            if jaccard(declared, answer) > thresholds["max_field_similarity"]:
+                failures.append(
+                    "chosen.answers_failure_mode restates the failure mode rather than answering it"
+                )
         forbids = text_of(chosen.get("forbids"))
         if SELF_NEGATING_FORBID.search(forbids):
             warnings.append(
@@ -287,9 +507,9 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         chosen_text = " ".join(text_of(chosen.get(f)) for f in ("why", "forbids", "impossible_now"))
 
     scene = text_of(concept.get("first_use_scene"))
-    if len(scene) < mins["first_use_scene"]:
+    if text_units(scene) < mins["first_use_scene"]:
         failures.append(
-            f"first_use_scene: needs at least {mins['first_use_scene']} chars - one concrete scene, "
+            f"first_use_scene: needs at least {mins['first_use_scene']} units - one concrete scene, "
             "not a description of the concept"
         )
     check_padding("first_use_scene", scene, thresholds["min_distinct_ratio"], failures)
@@ -321,8 +541,8 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             if not text_of(n.get("thing")):
                 failures.append(f"nearest_existing[{i}].thing: missing")
             differs = text_of(n.get("how_it_differs"))
-            if len(differs) < mins["how_it_differs"]:
-                failures.append(f"nearest_existing[{i}].how_it_differs: needs at least {mins['how_it_differs']} chars")
+            if text_units(differs) < mins["how_it_differs"]:
+                failures.append(f"nearest_existing[{i}].how_it_differs: needs at least {mins['how_it_differs']} units")
             check_padding(f"nearest_existing[{i}].how_it_differs", differs, thresholds["min_distinct_ratio"], failures)
 
     questions = concept.get("open_questions")
@@ -368,7 +588,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             else:
                 seen_d.add(normalize(statement))
             if text_units(text_of(d.get("why"))) < mins["decision_why"]:
-                failures.append(f"decisions[{i}].why: needs at least {mins['decision_why']} chars")
+                failures.append(f"decisions[{i}].why: needs at least {mins['decision_why']} units")
             check_padding(f"decisions[{i}].why", text_of(d.get("why")), thresholds["min_distinct_ratio"], failures)
 
     handoff = concept.get("handoff")
@@ -379,7 +599,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         if target not in schema["handoff_targets"]:
             failures.append(f"handoff.next: must be one of {', '.join(schema['handoff_targets'])}")
         if text_units(text_of(handoff.get("why"))) < mins["handoff_why"]:
-            failures.append(f"handoff.why: needs at least {mins['handoff_why']} chars")
+            failures.append(f"handoff.why: needs at least {mins['handoff_why']} units")
         check_padding("handoff.why", text_of(handoff.get("why")), thresholds["min_distinct_ratio"], failures)
 
     # --- the supplied contract must be this session's contract --------------
@@ -388,41 +608,178 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             "the supplied ban list is unconfirmed - present it to the user as exclusions and rerun "
             "banlist.py with --confirmed; a sidecar claiming consent proves nothing on its own"
         )
+    # An absent field on either side used to skip these comparisons rather than
+    # fail them, which made a stripped-down file safer to pass than an honest
+    # one from another session.
+    #
+    # This was a containment ratio between the ban list's brief and the
+    # sidecar's free-form `brief`, at 0.5, and it failed in both directions: a
+    # ban list whose brief was the single word "ward" passed, because one word
+    # is fully contained in anything, while an honest rewording of the same
+    # brief in synonyms was refused. A word-overlap score cannot establish
+    # provenance and should never have been asked to.
+    #
+    # So the join is the one the skeleton already uses: the sidecar records the
+    # brief the contract was built for, and the two strings must be the same
+    # string. That is a consistency check between two files the same caller
+    # writes - exactly as strong as the skeleton check and no stronger - and it
+    # is stated that way everywhere. It does establish that substituting
+    # another session's contract means editing the sidecar to match, and that a
+    # contract must name a subject rather than a word. The free-form `brief`,
+    # which is meant to restate and expand the ask, is now compared only as a
+    # warning, because differing there is what an honest session looks like.
+    banlist_brief = text_of(banlist.get("brief"))
+    contract_brief = text_of(contract.get("brief")) if isinstance(contract, dict) else ""
+    if not banlist_brief:
+        failures.append(
+            "the ban list names no brief - a contract that does not say what it was built for cannot be "
+            "shown to belong to this session"
+        )
+    elif text_units(banlist_brief) < mins["contract_brief"] or \
+            len(content_tokens(banlist_brief)) < counts["min_brief_tokens"]:
+        failures.append(
+            f"the ban list's brief '{banlist_brief[:40]}' names a word rather than a subject "
+            f"(at least {mins['contract_brief']} units and {counts['min_brief_tokens']} content words). "
+            "A one-word brief is contained in every other brief, which is how a contract from another "
+            "session used to pass this check"
+        )
+    if not contract_brief:
+        failures.append(
+            "banlist_contract.brief: missing - the sidecar has to record the brief the contract was built "
+            "for, or nothing joins the two files but the caller's word"
+        )
+    elif banlist_brief and normalize(contract_brief) != normalize(banlist_brief):
+        failures.append(
+            "the ban list was built for a different brief than the one concept.json records: ban list "
+            f"'{banlist_brief[:50]}' vs sidecar '{contract_brief[:50]}'. A contract gates the session it "
+            "was built in, and the two files must at least agree on which session that is"
+        )
+    if banlist_brief and brief:
+        shared = max(coverage(banlist_brief, brief), coverage(brief, banlist_brief))
+        if shared < thresholds["min_brief_overlap"]:
+            warnings.append(
+                f"the concept's brief and the contract's share little vocabulary ({shared:.0%}): "
+                f"'{banlist_brief[:40]}' vs '{brief[:40]}'. Rewording in synonyms looks the same as "
+                "swapping the contract from here, so this is a note to read, not a verdict"
+            )
+
     contract_skeleton = text_of(contract.get("skeleton")) if isinstance(contract, dict) else ""
     banlist_skeleton = text_of(banlist.get("skeleton"))
-    if contract_skeleton and banlist_skeleton and normalize(contract_skeleton) != normalize(banlist_skeleton):
+    if not banlist_skeleton:
+        failures.append(
+            "the ban list names no skeleton - a contract without one cannot be the contract this "
+            "session built, and the skeleton is the thing the concept must not restate"
+        )
+    elif contract_skeleton and normalize(contract_skeleton) != normalize(banlist_skeleton):
         failures.append(
             "the skeleton in concept.json and the one in the ban list differ - the gate would be checking "
             "one contract and linting another"
         )
     sidecar_instincts = {normalize(v) for v in (contract.get("model_instincts") or []) if isinstance(v, str)}
     banlist_instincts = {normalize(v) for v in banlist.get("model_instincts", []) if isinstance(v, str)}
-    if sidecar_instincts and banlist_instincts and not sidecar_instincts <= banlist_instincts:
+    if sidecar_instincts and not sidecar_instincts <= banlist_instincts:
         missing = sorted(sidecar_instincts - banlist_instincts)[:3]
         failures.append(
             f"instincts in concept.json are absent from the ban list ({', '.join(missing)}...) - "
             "the two were built from different sessions"
         )
+    failures.extend(replay_contract(contract if isinstance(contract, dict) else {}, banlist, cliches, warnings))
 
     # --- the user's own long exclusions ------------------------------------
+    protected = protected_statements(concept, banlist)
     manual = [m for m in banlist.get("manual_checks", []) if isinstance(m, dict)]
-    if manual:
-        cleared = contract.get("manual_checks_cleared") if isinstance(contract, dict) else None
-        cleared_map: dict[str, str] = {}
-        if isinstance(cleared, list):
-            for entry in cleared:
-                if isinstance(entry, dict) and text_of(entry.get("id")):
-                    cleared_map[text_of(entry.get("id"))] = text_of(entry.get("note"))
-        for m in manual:
-            mid = text_of(m.get("id"))
-            note = cleared_map.get(mid, "")
-            check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
-            if len(note) < mins["manual_check_note"]:
-                failures.append(
-                    f"banlist_contract.manual_checks_cleared: exclusion '{mid}' "
-                    f"({text_of(m.get('statement'))[:60]}...) has no note saying how the concept avoids it. "
-                    "Long exclusions cannot be matched mechanically, so they are answered here or not at all."
-                )
+    # An answer is joined to a check by id, and the id is written by the same
+    # caller that writes both files. Two checks sharing one id were therefore
+    # discharged by one written answer, and the second exclusion the user
+    # asked for was never answered. The join is still by id - that is what
+    # the sidecar records - but a collision on either side is now a failure
+    # rather than a silent merge, so the cheap version of this costs a
+    # rejected contract.
+    ids = [text_of(m.get("id")) for m in manual]
+    repeated = sorted({i for i in ids if ids.count(i) > 1})
+    if repeated:
+        failures.append(
+            f"the ban list reuses manual check id(s) ({', '.join(repeated)}) - answers are joined to "
+            "checks by id, so two exclusions sharing one id would be discharged by one written answer"
+        )
+    cleared = contract.get("manual_checks_cleared") if isinstance(contract, dict) else None
+    cleared_map: dict[str, str] = {}
+    if isinstance(cleared, list):
+        cleared_ids = [text_of(e.get("id")) for e in cleared if isinstance(e, dict) and text_of(e.get("id"))]
+        repeated_cleared = sorted({i for i in cleared_ids if cleared_ids.count(i) > 1})
+        if repeated_cleared:
+            failures.append(
+                f"banlist_contract.manual_checks_cleared reuses id(s) ({', '.join(repeated_cleared)}) - "
+                "each exclusion is answered once, in its own note"
+            )
+        for entry in cleared:
+            if isinstance(entry, dict) and text_of(entry.get("id")):
+                cleared_map[text_of(entry.get("id"))] = text_of(entry.get("note"))
+    # A written note is required for the *user's* long exclusions, which is
+    # what SKILL.md, the template and the shipped example all say. It used
+    # to be required for every long entry, model instincts included, and
+    # that was invisible in a product brief and unavoidable outside one: a
+    # product instinct is a three-word noun phrase and becomes a matchable
+    # ban, while a story, ritual or mechanic instinct is naturally a clause
+    # and became a manual check. The shipped product example carries zero
+    # of them; a narrative brief produced twelve, so a user on such a brief
+    # met twelve mandatory notes no document had told them about. The rule
+    # was the thing that disagreed with every instruction, so the rule
+    # changed. The model's long instincts are still carried in the
+    # contract, still replayed, and now listed as a warning to reread the
+    # spec against - what the skeleton check and a reader are for.
+    # Whose exclusion this is, and which exclusions there are at all, come
+    # from the recomputed protected set rather than from any single field.
+    # Two versions of this were wrong. Reading `manual_checks[].source` was
+    # wrong because the caller writes it: flipping it to "model" turned both
+    # of the shipped example's user exclusions into warnings, no note
+    # written, exit 0. Reading membership of `banlist_contract`'s
+    # `model_instincts` was wrong for the same reason one commit later:
+    # copying the user's own sentence into that list discharged it, and the
+    # gate printed the id `user-01` while calling it "your own long
+    # instinct". `protected_statements` unions every location in both files
+    # and resolves an owner conflict to the user, so declaring a user
+    # exclusion to be a model instinct adds a claim rather than removing an
+    # obligation. A statement recorded nowhere as the model's is the user's:
+    # the failure mode of guessing wrong is an answer the author did not
+    # have to write.
+    #
+    # The loop is over the protected set, not over `manual_checks`, so
+    # deleting the row does not delete the obligation - the statement is
+    # still in `user_exclusions` in one file or the other.
+    ids_by_statement: dict[str, list[str]] = {}
+    for m in manual:
+        ids_by_statement.setdefault(normalize(text_of(m.get("statement"))), []).append(text_of(m.get("id")))
+    for e in banlist.get("entries", []):
+        if isinstance(e, dict):
+            ids_by_statement.setdefault(normalize(text_of(e.get("phrase"))), []).append(text_of(e.get("id")))
+    for mid, note in cleared_map.items():
+        check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
+    unanswered_model: list[str] = []
+    for key in sorted(protected):
+        statement, owner = protected[key]
+        if is_matchable_phrase(statement):
+            continue  # short enough to be a ban; the lint matches it literally
+        candidates = ids_by_statement.get(key, [])
+        answered = any(text_units(cleared_map.get(i, "")) >= mins["manual_check_note"] for i in candidates)
+        if answered:
+            continue
+        label = candidates[0] if candidates else "(no id in the ban list)"
+        if owner == "model":
+            unanswered_model.append(f"{label} ({statement[:50]})")
+            continue
+        failures.append(
+            f"banlist_contract.manual_checks_cleared: exclusion '{label}' "
+            f"({statement[:60]}...) has no note saying how the concept avoids it. "
+            "Long exclusions cannot be matched mechanically, so they are answered here or not at all."
+        )
+    if unanswered_model:
+        warnings.append(
+            f"{len(unanswered_model)} of your own long instincts are too long to match literally and "
+            f"carry no written answer ({'; '.join(unanswered_model[:3])}...). Only the user's "
+            "exclusions require one, so this is a reread rather than a failure: check the concept "
+            "against them yourself, because nothing mechanical is checking them"
+        )
 
     markers = schema["placeholder_markers"]
     for path, value in walk_strings(concept):
@@ -559,6 +916,42 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
     return failures
 
 
+def check_mentions(mentions: list[tuple[str, set[str]]], entries: list[dict[str, Any]],
+                   patterns: list[dict[str, Any]]) -> list[str]:
+    """A mention marker has to name a rule that exists, and name one.
+
+    The marker is the author asserting that a banned word appears here quoted
+    or denied rather than used. The gate cannot check that assertion - a regex
+    cannot tell an assertion from a quotation, which is the whole reason the
+    marker exists. What it can check is that the release is specific: a real id,
+    per span, and printed in the verdict so a reviewer sees every one.
+    """
+    failures: list[str] = []
+    known = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
+    for body, ids in mentions:
+        if not ids:
+            failures.append(
+                f"markdown: a mention block names no rule id ({body.strip()[:60]}...) - a release that "
+                "names nothing releases everything, so name the id the span is quoting or denying"
+            )
+            continue
+        unknown = sorted(i for i in ids if i not in known)
+        if unknown:
+            failures.append(
+                f"markdown: mention block releases unknown rule id(s) {', '.join(unknown)} - the id must be "
+                "one this session lints against, as printed by cliche_lint.py in square brackets"
+            )
+    return failures
+
+
+def describe_mentions(mentions: list[tuple[str, set[str]]]) -> list[str]:
+    return [
+        f"the spec marks '{body.strip()[:60]}' as mentioning rather than using {', '.join(sorted(ids))}; "
+        "the gate cannot verify that, it only records that you claimed it here and nowhere else"
+        for body, ids in mentions if ids
+    ]
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -569,21 +962,61 @@ def main(argv: list[str] | None = None) -> int:
         concept = require_mapping(read_json_arg(args.concept), "concept")
         banlist = load_banlist(args.banlist)
         frames = load_deck("frames")
+        cliches = load_deck("cliches")
         try:
             markdown = Path(args.markdown).read_text(encoding="utf-8")
         except OSError as exc:
             raise EngineError(f"cannot read {args.markdown}: {exc}") from exc
 
-        result = check_concept(concept, schema, frames, banlist)
+        result = check_concept(concept, schema, frames, banlist, cliches)
         result["failures"].extend(check_markdown(markdown, schema, concept))
 
-        blob = "\n".join(
-            v for path, v in walk_strings(concept) if not path.startswith("banlist_contract")
-        ) + "\n" + lintable_markdown(markdown)
-        findings = lint_text(
-            blob, banlist.get("entries", []), banlist.get("structural_patterns", []),
-            set(),
+        entries = lint_entries(banlist, cliches)
+        patterns = lint_patterns(banlist, cliches)
+        mentions = extract_mentions(markdown)
+        result["failures"].extend(check_mentions(mentions, entries, patterns))
+        known_ids = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
+        result["failures"].extend(mention_bound_failures(mentions, known_ids))
+        result["failures"].extend(mention_placement_failures(markdown))
+        result["warnings"].extend(describe_mentions(mentions))
+
+        # `banlist_contract` holds the burnt phrases themselves, so it is not
+        # linted - but as an exact path, not as a prefix. `startswith` meant a
+        # sidecar key called `banlist_contract_notes` was never linted while the
+        # same text under any other key failed.
+        sidecar = "\n".join(
+            v for path, v in walk_strings(concept)
+            if not (path == "banlist_contract" or path.startswith(("banlist_contract.", "banlist_contract[")))
         )
+        body = lintable_markdown(markdown)
+        findings = lint_text(sidecar, entries, patterns)
+        findings.extend(lint_document(body, entries, patterns, sidecar.count("\n") + 1))
+
+        # --- the protected set, enforced outside the supplied structure ------
+        # This pass does not read `entries`, `structural_patterns`, `allowed`,
+        # any tier or any id from the ban list, and honours no release of any
+        # kind. It lints the same text against phrases recomputed from content
+        # by `protected_statements`, so an id collision, a retier, a move
+        # between fields or files, a duplicate or a deleted row changes nothing
+        # about whether a burnt instinct or one of the user's own exclusions
+        # fires. What it does not establish is in the note above
+        # `protected_statements`: the gate has no copy of those statements that
+        # the judged party did not write, so deleting one from every location in
+        # both files still removes it.
+        protected = protected_lint_entries(protected_statements(concept, banlist))
+        protected_findings = lint_text(
+            sidecar + "\n" + strip_mention_markers(body), protected, [])
+        if protected_findings:
+            result["failures"].append(
+                f"{len(protected_findings)} burnt instinct(s) or user exclusion(s) are used in the spec: "
+                + ", ".join(sorted({f["match"] for f in protected_findings}))
+                + " - these are the subtraction the session is built on and nothing in the ban list, the "
+                "sidecar or the markdown releases them"
+            )
+            already = {(f["line"], normalize(f["match"])) for f in findings}
+            findings.extend(f for f in protected_findings
+                            if (f["line"], normalize(f["match"])) not in already)
+
         banned = [f for f in findings if f["tier"] == "ban"]
         if banned:
             result["failures"].append(

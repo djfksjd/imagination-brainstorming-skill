@@ -30,23 +30,28 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, die, distinct_ratio, jaccard, load_banlist, load_deck,
-        lint_text, normalize, read_json_arg, text_units,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, distinct_ratio, jaccard,
+        load_banlist, load_deck, lint_text, normalize, read_json_arg, text_units,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, die, distinct_ratio, jaccard, load_banlist, load_deck,
-        lint_text, normalize, read_json_arg, text_units,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, distinct_ratio, jaccard,
+        load_banlist, load_deck, lint_text, normalize, read_json_arg, text_units,
     )
 
 FAIL_CODE = 3
+# The floors and thresholds live in references/decks/approaches-schema.json,
+# which is also where the shape of approaches.json is documented for whoever has
+# to write one. These mirror the deck so that --count has a default before the
+# deck is read; tests pin them to it.
 DEFAULT_COUNT = 3
 SUMMARY_MAX_OVERLAP = 0.55
 FAILURE_MAX_OVERLAP = 0.50
-MIN_SUMMARY_UNITS = 120
-MIN_FAILURE_UNITS = 60
+MIN_SUMMARY_UNITS = 86
+MIN_FAILURE_UNITS = 43
+MIN_FRAME_FIT_UNITS = 36
 DETAIL_RATIO = 0.4  # shortest summary must be at least this fraction of the longest
 MIN_DISTINCT_RATIO = 0.3
 
@@ -87,6 +92,18 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
     failures: list[str] = []
     warnings: list[str] = []
 
+    # No --schema flag on any caller: a caller-supplied schema could set every
+    # floor to zero and leave a check that reports success without checking.
+    schema = load_deck("approaches-schema")
+    mins, thresholds = schema["min_units"], schema["thresholds"]
+    min_summary = mins["summary"]
+    min_frame_fit = mins["frame_fit"]
+    min_failure = mins["failure_mode"]
+    max_summary_overlap = thresholds["max_summary_overlap"]
+    max_failure_overlap = thresholds["max_failure_overlap"]
+    min_detail_ratio = thresholds["min_detail_ratio"]
+    min_distinct_ratio = thresholds["min_distinct_ratio"]
+
     if count < DEFAULT_COUNT:
         # Lowering the count would turn the check into a formality: with one or
         # two approaches there is nothing to compare, and every pairwise test
@@ -97,6 +114,9 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
         failures.append(f"{len(approaches)} approaches supplied, {count} expected")
 
     frame_table = {f["id"]: f for f in frames["frames"]}
+    frames_by_category: dict[str, list[str]] = {}
+    for f in frames["frames"]:
+        frames_by_category.setdefault(f["category"], []).append(f["id"])
     ids, categories, unsafe = [], [], []
     seen_ids: dict[str, int] = {}
     for i, a in enumerate(approaches):
@@ -111,13 +131,47 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
         if not frame_id:
             failures.append(f"{label}: no frame_id - an approach that came from nowhere cannot be shown to differ")
         elif frame_id not in frame_table:
-            failures.append(f"{label}: unknown frame_id '{frame_id}'")
+            candidates = frames_by_category.get(frame_id)
+            if candidates:
+                # The frame_id supplied is actually a category (the bracketed
+                # token deal.py's printed output shows next to each frame).
+                # A category is not unique - refuse and name the real
+                # frame_ids rather than guessing one.
+                failures.append(
+                    f"{label}: '{frame_id}' is a frame category, not a frame_id - "
+                    f"it is ambiguous between {', '.join(sorted(candidates))}; "
+                    "use the frame_id shown in deal.json's approaches[].frame_id"
+                )
+            else:
+                failures.append(f"{label}: unknown frame_id '{frame_id}'")
         else:
             categories.append(frame_table[frame_id]["category"])
-        if text_units(text_of(a.get("summary"))) < MIN_SUMMARY_UNITS:
-            failures.append(f"{label}: summary under {MIN_SUMMARY_UNITS} units - too thin to be judged against the others")
-        if text_units(text_of(a.get("failure_mode"))) < MIN_FAILURE_UNITS:
-            failures.append(f"{label}: failure_mode under {MIN_FAILURE_UNITS} units - state how this one actually fails here")
+            # A frame that cannot be occupied by this brief at all is a
+            # stronger case than "does not occupy it well", and it is the one
+            # that reaches the user: `designed-for-repair` ("assume it breaks
+            # often ... the spare parts") was dealt into the unsafe seat for a
+            # one-off closing rite that happens once and never again, and this
+            # check passed the set without comment. Every frame names one thing
+            # its approach must contain, so the approach is made to say what
+            # plays that part here. Writing "the spare parts of a rite that
+            # happens once" puts the mismatch where the author and the user can
+            # both see it. What this cannot do - and it is the same limit as
+            # the overlap scores below - is judge whether the answer is true.
+            # It forces the claim into the open and dates it to the draw.
+            must_contain = frame_table[frame_id]["must_contain"]
+            fit = text_of(a.get("frame_fit"))
+            if text_units(fit) < min_frame_fit:
+                failures.append(
+                    f"{label}: frame_fit under {min_frame_fit} units - the '{frame_id}' frame requires "
+                    f"\"{must_contain}\" Name what plays that part in this brief, or say the frame cannot be "
+                    "occupied here and redeal with --run 2"
+                )
+            elif distinct_ratio(fit) < min_distinct_ratio:
+                failures.append(f"{label}.frame_fit: repeated filler rather than content")
+        if text_units(text_of(a.get("summary"))) < min_summary:
+            failures.append(f"{label}: summary under {min_summary} units - too thin to be judged against the others")
+        if text_units(text_of(a.get("failure_mode"))) < min_failure:
+            failures.append(f"{label}: failure_mode under {min_failure} units - state how this one actually fails here")
         if "unsafe" in a:
             # One field, one meaning. The alias let an approach be seated in the
             # check while every documented unsafe_seat field said false.
@@ -127,10 +181,10 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
         if a.get("unsafe_seat") is True:
             unsafe.append(label)
         failure_mode = text_of(a.get("failure_mode"))
-        if failure_mode and distinct_ratio(failure_mode) < MIN_DISTINCT_RATIO:
+        if failure_mode and distinct_ratio(failure_mode) < min_distinct_ratio:
             failures.append(f"{label}.failure_mode: repeated filler rather than content")
         summary = text_of(a.get("summary"))
-        if summary and distinct_ratio(summary) < MIN_DISTINCT_RATIO:
+        if summary and distinct_ratio(summary) < min_distinct_ratio:
             failures.append(f"{label}.summary: repeated filler rather than content")
 
     if len(set(categories)) != len(categories):
@@ -144,7 +198,8 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
 
     summaries = [text_of(a.get("summary")) for a in approaches]
     failure_modes = [text_of(a.get("failure_mode")) for a in approaches]
-    for field, values in (("summary", summaries), ("failure_mode", failure_modes)):
+    frame_fits = [text_of(a.get("frame_fit")) for a in approaches]
+    for field, values in (("summary", summaries), ("failure_mode", failure_modes), ("frame_fit", frame_fits)):
         seen: dict[str, str] = {}
         for label, value in zip(ids, values):
             key = normalize(value)
@@ -154,8 +209,8 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
                 failures.append(f"{seen[key]} and {label} have an identical {field}")
             else:
                 seen[key] = label
-    lengths = [len(s) for s in summaries if s]
-    if lengths and min(lengths) < DETAIL_RATIO * max(lengths):
+    lengths = [text_units(s) for s in summaries if s]
+    if lengths and min(lengths) < min_detail_ratio * max(lengths):
         failures.append(
             "one approach is described in far less detail than another; unequal detail is how a decoy is built"
         )
@@ -166,23 +221,28 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
             s = jaccard(summaries[i], summaries[j])
             f = jaccard(failure_modes[i], failure_modes[j])
             pairs.append({"a": ids[i], "b": ids[j], "summary_overlap": round(s, 2), "failure_overlap": round(f, 2)})
-            if s > SUMMARY_MAX_OVERLAP:
+            if s > max_summary_overlap:
                 failures.append(f"{ids[i]} and {ids[j]} restate each other (summary overlap {s:.2f})")
-            elif s > SUMMARY_MAX_OVERLAP - 0.2:
+            elif s > max_summary_overlap - 0.2:
                 warnings.append(
                     f"{ids[i]} and {ids[j]} are close (summary overlap {s:.2f}); read them again as one sentence each"
                 )
-            if f > FAILURE_MAX_OVERLAP:
+            if f > max_failure_overlap:
                 failures.append(
                     f"{ids[i]} and {ids[j]} fail the same way (failure overlap {f:.2f}) - "
                     "two ideas that die of the same cause are one idea"
                 )
-            elif f > FAILURE_MAX_OVERLAP - 0.15:
+            elif f > max_failure_overlap - 0.15:
                 warnings.append(f"{ids[i]} and {ids[j]} fail in similar ways (overlap {f:.2f}); worth rewriting one")
 
     # Synonyms defeat token overlap: three descriptions of one idea, written in
     # different words, score low and pass. Nothing in the standard library can
     # tell them apart, so the honest move is to say so where it will be read.
+    warnings.append(
+        "frame_fit is the author's word that the frame can be occupied by this brief at all - a "
+        "one-off rite cannot be 'designed to be repaired by its users', and that frame has been dealt "
+        "into the unsafe seat before. The check requires the claim; it cannot check that it is true."
+    )
     warnings.append(
         "This check is a floor: it catches restatement, shared failure modes and unequal detail. "
         "It cannot tell whether three descriptions are one idea in three vocabularies - "
@@ -213,10 +273,24 @@ def main(argv: list[str] | None = None) -> int:
             blob = "\n".join(
                 f"{a.get('summary', '')}\n{a.get('failure_mode', '')}" for a in approaches
             )
-            lint_findings = lint_text(
-                blob, banlist.get("entries", []), banlist.get("structural_patterns", []),
-                set(),
-            )
+            # Deck first, as at the gate. Linting the supplied entries alone
+            # made a shortened ban list a shortened lint at this stage: the
+            # bundled cliches are added here and a supplied entry can only add
+            # to them.
+            deck = load_deck("cliches")
+            entries = deck_lint_entries(deck)
+            reserved = {e["id"] for e in entries}
+            entries += [
+                e for e in banlist.get("entries", [])
+                if isinstance(e, dict) and e.get("id") not in reserved
+            ]
+            patterns = list(deck["structural_patterns"])
+            seen = {str(p.get("id")) for p in patterns}
+            patterns += [
+                p for p in banlist.get("structural_patterns", [])
+                if isinstance(p, dict) and str(p.get("id")) not in seen
+            ]
+            lint_findings = lint_text(blob, entries, patterns, set())
             banned = [f for f in lint_findings if f["tier"] == "ban"]
             if banned:
                 verdict["failures"].append(

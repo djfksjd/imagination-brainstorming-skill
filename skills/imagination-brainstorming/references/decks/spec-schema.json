@@ -27,30 +27,34 @@
     "approaches": 3,
     "min_open_questions": 2,
     "min_nearest_existing": 1,
-    "min_decisions": 2
+    "min_decisions": 2,
+    "min_brief_tokens": 3
   },
   "min_units": {
-    "brief": 40,
-    "premise_why": 25,
-    "premises_note": 60,
-    "skeleton": 40,
-    "approach_summary": 120,
-    "approach_failure_mode": 60,
-    "chosen_why": 80,
-    "forbids": 60,
-    "impossible_now": 40,
-    "first_use_scene": 250,
-    "how_it_differs": 40,
-    "open_question": 25,
-    "decision_why": 30,
-    "handoff_why": 30,
-    "manual_check_note": 20,
-    "section_body": 80
+    "brief": 29,
+    "contract_brief": 18,
+    "premise_why": 18,
+    "premises_note": 43,
+    "skeleton": 29,
+    "approach_summary": 86,
+    "approach_failure_mode": 43,
+    "chosen_why": 58,
+    "answers_failure_mode": 58,
+    "forbids": 43,
+    "impossible_now": 29,
+    "first_use_scene": 180,
+    "how_it_differs": 29,
+    "open_question": 18,
+    "decision_why": 22,
+    "handoff_why": 22,
+    "manual_check_note": 14,
+    "section_body": 58
   },
   "thresholds": {
     "min_distinct_ratio": 0.3,
     "max_skeleton_overlap": 0.6,
-    "max_field_similarity": 0.85
+    "max_field_similarity": 0.85,
+    "min_brief_overlap": 0.5
   },
   "required_markdown_sections": [
     {
@@ -100,6 +104,9 @@
     "imagination-engine",
     "stop"
   ],
-  "units_note": "Minimums are counted in units, not code points: a CJK letter or digit counts as two, because one Han character or Hangul syllable carries roughly what two Latin letters carry. Counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for.",
-  "bindings_note": "Assertions the written spec must make in its own voice, marked with <!-- bind: <field> --> ... <!-- /bind --> and compared exactly after NFKC and whitespace collapse. A similarity score was tried first and could not tell the difference between a proposition being asserted and the same words appearing inside a sentence that rejects them - \"we considered 'X' but ultimately allow it\" scored a perfect match against X. Bound fields: chosen.forbids, chosen.impossible_now, first_use_scene, and every open_questions[i]. Each must appear exactly once, inside its designated section, as plain prose rather than a quotation or a struck-through line."
+  "units_note": "Minimums are counted in units, not code points. A letter or digit counts one unit, and a wide one - a Han character, a Hangul syllable, a kana - counts two. Punctuation and whitespace count nothing at all: they used to count one unit per run, and that run rule reset the mark cap on every full stop, so a hundred and twenty dots each bought two more accents and 370 characters of padding measured 251 units against a 250-unit floor. Combining marks count, up to two per base letter or digit, and punctuation does not reset that cap - stripping marks was right for stray formatting characters and wrong for Thai, Devanagari, Arabic and Hebrew, which write their vowels and tones that way. engine.text_units is the single definition and the sibling skill states the same one.",
+  "bindings_note": "Assertions the written spec must make in its own voice, marked with <!-- bind: <field> --> ... <!-- /bind --> and compared exactly after NFKC and whitespace collapse. A similarity score was tried first and could not tell the difference between a proposition being asserted and the same words appearing inside a sentence that rejects them - \"we considered 'X' but ultimately allow it\" scored a perfect match against X. Bound fields: chosen.forbids, chosen.impossible_now, first_use_scene, and every open_questions[i]. Each must appear exactly once, inside its designated section, as plain prose rather than a quotation or a struck-through line.",
+  "brief_note": "The ban list and concept.json must record the same brief string, normalized - the same join the skeleton uses. This was a containment ratio at 0.5 and it failed both ways: a ban list whose brief was the single word 'ward' passed, because one word is contained in every longer brief, while an honest rewording of the same brief in synonyms was refused. A word-overlap score cannot establish provenance. Equality between the two files is a consistency check on two files the same caller writes - no stronger than that, and no weaker than the skeleton check beside it - and the ban list's brief must name a subject rather than a word. The sidecar's own free-form 'brief' field, which restates and expands the ask, is compared only as a warning.",
+  "failure_mode_note": "The chosen approach's own failure_mode is read at the gate, and chosen.answers_failure_mode must say what the concept does about it. The gate passed, first try and without comment, a game mechanic whose spec stated that the group 'either invents a tracker - restoring the artefact the frame removed - or lets the rule quietly lapse': the spec declared its own collapse and nothing looked. What the gate can check is that the declared failure was answered in writing and that the answer is not the failure restated. What it cannot check, and does not claim to: whether the failure is fatal, and whether the answer is any good. That is why the verdict prints the declared failure mode next to the answer rather than deciding about it.",
+  "calibration_note": "These floors were measured, not scaled. One passage - the thinnest first-use scene worth accepting - was translated into Latin, Korean, Japanese, Chinese, Thai, Devanagari, Hebrew and Arabic and measured under this exact function, together with the same subject written as a flat description rather than a scene. The scenes measured 186 to 283 units and the descriptions 41 to 64, so a single number separates them in all eight scripts, and 180 is the highest one that still admits the thinnest legitimate scene in the densest script. Every other floor is that same ratio, 0.72, against the value it had when floors were calibrated on English alone. An earlier version scaled by 0.80, which is what dropping word gaps costs a space-separated script and nothing like what it costs Japanese (0.97), Chinese (0.96) or Thai (0.98) - that rescale quietly loosened those three by about a fifth. What one number cannot do is be equally strict everywhere: the same content measures about a third fewer units in Chinese than in Latin, so this floor is a tighter bar on Latin prose than on Chinese prose. It is set where it is because refusing legitimate writing in somebody's language is the worse failure, and this repository has shipped that failure twice."
 }

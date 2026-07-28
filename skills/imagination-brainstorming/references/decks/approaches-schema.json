@@ -1,0 +1,66 @@
+{
+  "deck": "approaches-schema",
+  "version": "0.3.0",
+  "note": "The shape of approaches.json - the file stage 3 writes by hand and divergence_check.py reads. Nothing generates it: deal.py deals the frames, and one approach is then written per dealt frame. The file is either a JSON list of approach objects or an object with an 'approaches' key, so concept.json can be passed to the same check unchanged. What the check proves is that the set is a set: different frame categories, summaries that do not restate each other, failure modes that do not coincide, comparable detail, and exactly one approach honestly occupying the unsafe seat. What it cannot prove is that the three are not one idea in three vocabularies - read them as one sentence each and decide that yourself. A worked file is shipped at references/example-approaches.json.",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string",
+      "required": true,
+      "note": "Short slug, unique in the file. Two approaches sharing an id cannot be told apart by anything downstream."
+    },
+    {
+      "name": "frame_id",
+      "type": "string",
+      "required": true,
+      "note": "An id from the frames deck (references/decks/frames.json), as dealt by deal.py. Approaches whose frames share a category are variants rather than alternatives, and the check refuses the set."
+    },
+    {
+      "name": "summary",
+      "type": "string",
+      "required": true,
+      "note": "The approach in its own terms: what it is, what it asks of whom, and what makes it this frame rather than another. At least min_units.summary units, and the shortest summary must be at least thresholds.min_detail_ratio of the longest - unequal detail is how a decoy is built."
+    },
+    {
+      "name": "failure_mode",
+      "type": "string",
+      "required": true,
+      "note": "How this one actually fails in this brief - not the generic hint from the frames deck. At least min_units.failure_mode units. Two approaches that die of the same cause are one approach."
+    },
+    {
+      "name": "frame_fit",
+      "type": "string",
+      "required": true,
+      "note": "What in this brief plays the part the dealt frame's must_contain names - the sentence people will actually say, the repair procedure and the spare parts, the threshold where the kind of thing changes. At least min_units.frame_fit units, and not the same claim on two approaches. A frame that cannot be occupied by the brief at all is the failure this field exists for: designed-for-repair was dealt into the unsafe seat for a one-off closing rite that happens once, and the check passed the set without comment. Writing what the spare parts of a single rite would be puts the mismatch where the author and the user can both see it. The check requires the claim and cannot check that it is true; if the frame does not fit, say so and redeal with --run 2."
+    },
+    {
+      "name": "unsafe_seat",
+      "type": "boolean",
+      "required": true,
+      "note": "True on exactly one approach in the file: the one you expect the user to reject, argued for honestly and in the same detail as the rest. The 'unsafe' spelling is not read and is refused outright, because the alias once seated an approach while every documented field said false."
+    },
+    {
+      "name": "chosen",
+      "type": "boolean",
+      "required": false,
+      "note": "Written after the user picks, and read by spec_gate.py rather than by this check: exactly one true, matching concept.json's chosen.approach_id. Absent or false while the three are still being shown."
+    }
+  ],
+  "counts": {
+    "approaches": 3,
+    "unsafe_seats": 1
+  },
+  "min_units": {
+    "summary": 86,
+    "failure_mode": 43,
+    "frame_fit": 36
+  },
+  "thresholds": {
+    "max_summary_overlap": 0.55,
+    "max_failure_overlap": 0.5,
+    "min_detail_ratio": 0.4,
+    "min_distinct_ratio": 0.3
+  },
+  "units_note": "Minimums are counted in units, not code points: a letter or digit counts one, a wide letter or digit counts two, punctuation and whitespace count nothing, and combining marks count up to two per base letter or digit. Both floors here are the same 0.72 ratio as spec-schema.json's, which was measured across eight scripts rather than scaled from one - see that file's calibration_note.",
+  "example": "references/example-approaches.json"
+}

@@ -88,6 +88,39 @@ def test_unknown_frame_fails(run, tmp_path, approaches):
     assert any("unknown frame_id" in f for f in res.json()["failures"])
 
 
+def test_category_used_as_frame_id_is_refused_by_name(run, tmp_path, approaches):
+    """Reproduces the live-use defect: deal.py's printed output shows each
+    approach as '[category] label', and a user who reads only that output
+    writes the category into approaches[].frame_id. The category is never a
+    valid frame_id (every category holds several frames), so this must be
+    refused with a message naming the real candidates - not a bare 'unknown
+    frame_id', and never a silent guess at which frame was meant."""
+    approaches[0]["frame_id"] = "subtraction"  # a category, not a frame id
+    res = run("divergence_check.py", "--approaches", write(tmp_path, approaches), "--json")
+    assert res.code == 3
+    failures = res.json()["failures"]
+    match = [f for f in failures if "frame category, not a frame_id" in f]
+    assert match, failures
+    # Every frame in the 'subtraction' category must be named as a candidate.
+    for candidate in ("delete-the-core", "one-thing-only", "no-interface", "no-storage"):
+        assert candidate in match[0]
+
+
+def test_every_frame_category_is_ambiguous_as_a_frame_id(run, tmp_path, approaches, decks):
+    """Guards the fix against a future deck where some category happens to
+    contain only one frame - in that case a category token would resolve
+    unambiguously and this refusal would need to say so instead of listing
+    exactly one candidate as though it were still a choice."""
+    frames = decks["frames"]
+    by_cat: dict[str, list[str]] = {}
+    for f in frames["frames"]:
+        by_cat.setdefault(f["category"], []).append(f["id"])
+    assert all(len(ids) > 1 for ids in by_cat.values()), (
+        "a category with exactly one frame would make this refusal message "
+        "misleading; update it to resolve unambiguous categories instead of listing them"
+    )
+
+
 def test_wrong_count_fails(run, tmp_path, approaches):
     res = run("divergence_check.py", "--approaches", write(tmp_path, approaches[:2]), "--json")
     assert res.code == 3
@@ -106,3 +139,57 @@ def test_malformed_input_is_a_usage_error(run, tmp_path):
     path = tmp_path / "broken.json"
     path.write_text("{not json", encoding="utf-8")
     assert run("divergence_check.py", "--approaches", str(path)).code == 1
+
+
+# --- whether the frame can be occupied by this brief at all ----------------
+#
+# The check is lexical and says so. But a frame that is *impossible* for the
+# brief is a stronger case than one occupied badly, and it reaches the user:
+# `designed-for-repair` - "assume it breaks often ... the repair procedure and
+# the spare parts" - was dealt into the unsafe seat for a one-off closing rite
+# that happens once and never again, and the set passed without comment. Every
+# frame names one thing its approach must contain, so the approach has to say
+# what plays that part here.
+
+
+def test_an_approach_that_never_says_how_it_occupies_its_frame_is_refused(run, tmp_path, references):
+    approaches = json.loads((references / "example-approaches.json").read_text(encoding="utf-8"))
+    del approaches["approaches"][0]["frame_fit"]
+    path = tmp_path / "approaches.json"
+    path.write_text(json.dumps(approaches, ensure_ascii=False), encoding="utf-8")
+    res = run("divergence_check.py", "--approaches", str(path), "--json")
+    assert res.code == 3, res.out
+    failures = " | ".join(res.json()["failures"])
+    assert "frame_fit" in failures
+    assert "The sentence people will actually say" in failures, "the frame's own requirement is quoted"
+
+
+def test_two_approaches_may_not_share_one_occupancy_claim(run, tmp_path, references):
+    approaches = json.loads((references / "example-approaches.json").read_text(encoding="utf-8"))
+    approaches["approaches"][1]["frame_fit"] = approaches["approaches"][0]["frame_fit"]
+    path = tmp_path / "approaches.json"
+    path.write_text(json.dumps(approaches, ensure_ascii=False), encoding="utf-8")
+    res = run("divergence_check.py", "--approaches", str(path), "--json")
+    assert res.code == 3
+    assert any("identical frame_fit" in f for f in res.json()["failures"])
+
+
+def test_the_check_says_what_frame_fit_cannot_establish(run, references):
+    res = run("divergence_check.py", "--approaches", str(references / "example-approaches.json"), "--json")
+    assert res.code == 0, res.out
+    assert any("cannot check that it is true" in w for w in res.json()["warnings"])
+
+
+def test_a_short_ban_list_is_not_a_short_lint_here(run, tmp_path, approaches):
+    """This stage linted the supplied entries alone, so a hand-written ban list
+    naming one irrelevant phrase let every bundled cliche through. The deck goes
+    in first here as it does at the gate."""
+    approaches[0]["summary"] = approaches[0]["summary"] + " It is a one-stop shop for the ward."
+    short = tmp_path / "short.json"
+    short.write_text(json.dumps({
+        "entries": [{"id": "extra-01", "phrase": "something else entirely", "tier": "ban"}],
+    }), encoding="utf-8")
+    res = run("divergence_check.py", "--approaches", write(tmp_path, approaches),
+              "--banlist", str(short), "--json")
+    assert res.code == 3
+    assert any("one-stop shop" in f for f in res.json()["failures"])
