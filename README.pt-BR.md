@@ -136,29 +136,40 @@ Ela redistribui a partir de uma rodada nova, acrescenta *todos os elementos da r
 
 ### Rodando os scripts à mão
 
-Python 3.11, biblioteca padrão, nada a instalar. Os scripts ficam em `skills/imagination-brainstorming/scripts/`; escreva os arquivos de trabalho num diretório temporário, nunca dentro da pasta da habilidade.
+Python 3.11, biblioteca padrão, nada a instalar. A habilidade fica em `skills/imagination-brainstorming/`, e todos os comandos abaixo foram escritos para rodar de dentro desse diretório. Escreva os arquivos de trabalho num diretório temporário, nunca dentro da pasta da habilidade.
 
 ```bash
-# 1 · distribua as famílias de perguntas e três enquadramentos incompatíveis
-python3 scripts/deal.py --brief "um jeito de passar o plantão na ala" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · construa o contrato — duas vezes, e a ordem importa
-python3 scripts/banlist.py --brief "<briefing>" --instincts instincts.txt \
-    --skeleton "uma lista preenchida no fim do turno" --out /tmp/work
-#    …mostre ao usuário, colha a resposta, e só então:
-python3 scripts/banlist.py --brief "<briefing>" --instincts instincts.txt \
-    --skeleton "uma lista preenchida no fim do turno" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · distribua as famílias de perguntas e três enquadramentos incompatíveis
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · construa o contrato — duas vezes, e a ordem importa. --instincts é um arquivo
+#     que você escreve: uma resposta provável por linha, doze delas.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …mostre ao usuário como lista de exclusões, colha a resposta, e só então:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · prove que as três abordagens são mesmo três
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · leve especificação, sidecar e contrato juntos ao portão — os três são obrigatórios
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+Todos os arquivos citados aí acompanham o repositório, então o bloco roda como está e os quatro passos terminam em `0`; o passo 2 reproduz `references/example-banlist.json` exatamente. Vá trocando pelos arquivos da sua própria sessão conforme avança.
+
+**`approaches.json` é escrito à mão.** O `deal.py` distribui os enquadramentos; você escreve uma abordagem por enquadramento distribuído dentro de um objeto com a chave `approaches` — um `id`, um `frame_id` tirado do baralho de enquadramentos, um `summary` de pelo menos 120 unidades, um `failure_mode` de pelo menos 60 dizendo como *esta* abordagem quebra *neste* briefing, e `unsafe_seat` verdadeiro em exatamente uma delas. O `references/decks/approaches-schema.json` documenta cada campo e cada piso que a checagem aplica; o `references/example-approaches.json` é um arquivo aprovado do qual copiar o formato.
+
 `--confirmed` registra um consentimento que já aconteceu. Ligá-lo antes de o usuário ter visto a lista é uma mentira da qual todo o resto do pipeline passa a depender, e o portão não tem como detectá-la — por isso são duas chamadas, e não um único sinalizador.
+
+O contrato, esse não dá para trocar. O portão o reconstrói a partir do que o `concept.json` declara e recusa qualquer arquivo a que falte um dos instintos queimados, uma das exclusões do próprio usuário ou uma entrada do baralho de clichês embutido — e esse baralho é aplicado à especificação venha o contrato que vier, de modo que entregar um arquivo mais curto nunca significa um lint mais curto.
 
 `cliche_lint.py` é para **rascunhos no meio da sessão**. Rodado sobre uma especificação pronta, ele aponta a própria seção de proibições do documento; quem revisa a especificação pronta é o `spec_gate.py`, que recorta esse trecho antes.
 
@@ -215,7 +226,11 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # uma sessão completa, inclusive o que foi cortado
 │   ├── example-concept.md      # a spec que essa sessão produziu
 │   ├── example-concept.json    # o sidecar dela — ambos passam nos portões e servem de fixture
-│   └── decks/                  # famílias de perguntas · molduras · clichês · esquema da spec
+│   ├── example-approaches.json # entrada da etapa 3, no formato que o divergence_check.py lê
+│   ├── example-banlist.json    # o contrato contra o qual tudo acima foi checado
+│   ├── example-instincts.txt   # os doze instintos que o originaram
+│   ├── example-exclusions.txt  # e as três exclusões do próprio usuário
+│   └── decks/                  # famílias de perguntas · molduras · clichês · esquema da spec · esquema de abordagens
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

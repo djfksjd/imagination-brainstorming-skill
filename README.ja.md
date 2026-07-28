@@ -136,29 +136,40 @@ codex plugin add imagination-brainstorming@djfksjd
 
 ### スクリプトを自分で回す
 
-Python 3.11、標準ライブラリのみ、インストール不要。スクリプトは `skills/imagination-brainstorming/scripts/` にあります。作業ファイルは必ずスクラッチディレクトリへ — スキルフォルダの中には書かないでください。
+Python 3.11、標準ライブラリのみ、インストール不要。スキルは `skills/imagination-brainstorming/` にあり、以下のコマンドはすべてそのディレクトリの中で実行する前提で書かれています。作業ファイルは必ずスクラッチディレクトリへ — スキルフォルダの中には書かないでください。
 
 ```bash
-# 1 · 質問系統と、互いに両立しない三つのフレームを配る
-python3 scripts/deal.py --brief "病棟の勤務交代の引き継ぎ方法" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · 契約を作る — 二回呼び、順序が重要
-python3 scripts/banlist.py --brief "<ブリーフ>" --instincts instincts.txt \
-    --skeleton "勤務の終わりに記入するチェックリスト" --out /tmp/work
-#    …ユーザーに見せ、回答を得てから、はじめて:
-python3 scripts/banlist.py --brief "<ブリーフ>" --instincts instincts.txt \
-    --skeleton "勤務の終わりに記入するチェックリスト" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · 質問系統と、互いに両立しない三つのフレームを配る
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · 契約を作る — 二回呼び、順序が重要。--instincts は自分で書くファイルで、
+#     まず思いつく答えを一行に一つ、十二個並べる。
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …排除リストとしてユーザーに見せ、回答を得てから、はじめて:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · 三案が本当に三つであることを証明する
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · スペックとサイドカーと契約をまとめてゲートにかける — 三つとも必須
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+ここに出てくるファイルはすべてリポジトリに同梱されています。だからこのブロックは書かれたとおりに動き、四つの手順はいずれも `0` で終わります。手順 2 は `references/example-banlist.json` をそのまま再生成します。進めながら、自分のセッションのファイルに差し替えてください。
+
+**`approaches.json` は手で書くファイルです。** フレームを配るのは `deal.py`、配られたフレームごとに一つずつ案を書き、`approaches` キーを持つオブジェクトにまとめます — `id`、フレームデッキから取った `frame_id`、120 単位以上の `summary`、このブリーフで*この*案がどう崩れるかを述べる 60 単位以上の `failure_mode`、そしてちょうど一つだけ真にする `unsafe_seat`。全フィールドと下限は `references/decks/approaches-schema.json` に、そのまま形を写せる合格例は `references/example-approaches.json` にあります。
+
 `--confirmed` はすでに起きた同意の記録です。ユーザーがリストを見る前にこれを立てるのは、以降のパイプライン全体が依存することになる嘘であり、ゲートには検出する術がありません — だからフラグ一つではなく二回の呼び出しになっています。
+
+一方、契約そのものは差し替えられません。ゲートは `concept.json` が宣言した内容から契約を組み直し、焼いた直感、ユーザー自身の排除、同梱クリシェデッキの項目のいずれかを欠くファイルを拒みます — そのデッキはどんな契約が来てもスペックに適用されるので、短いファイルを渡したところで lint が短くなることはありません。
 
 `cliche_lint.py` は**セッション途中の草稿用**です。完成したスペックにかけると、そのスペック自身の禁止リスト節を指摘します。完成スペックを lint するのは `spec_gate.py` のほうで、そちらはその区間を先に切り落とします。
 
@@ -215,7 +226,11 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # 切り捨てた案も含む実セッション1件
 │   ├── example-concept.md      # そのセッションが生んだ仕様
 │   ├── example-concept.json    # そのサイドカー（両方ゲート通過・フィクスチャ兼用）
-│   └── decks/                  # 質問ファミリー · フレーム · クリシェ · 仕様スキーマ
+│   ├── example-approaches.json # 段階3の入力（divergence_check.py が読む形）
+│   ├── example-banlist.json    # 上をゲートにかけた契約そのもの
+│   ├── example-instincts.txt   # その契約の元になった十二の直感
+│   ├── example-exclusions.txt  # そしてユーザー自身の三つ
+│   └── decks/                  # 質問ファミリー · フレーム · クリシェ · 仕様スキーマ · 案スキーマ
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

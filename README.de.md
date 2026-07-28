@@ -136,29 +136,40 @@ Sie teilt aus einem neuen Zug neu aus, nimmt *jedes Element der vorigen Runde* i
 
 ### Die Skripte selbst fahren
 
-Python 3.11, Standardbibliothek, nichts zu installieren. Die Skripte liegen in `skills/imagination-brainstorming/scripts/`; schreiben Sie Arbeitsdateien in ein Scratch-Verzeichnis, nie in den Ordner der Fähigkeit.
+Python 3.11, Standardbibliothek, nichts zu installieren. Die Fähigkeit liegt in `skills/imagination-brainstorming/`, und alle folgenden Befehle sind so geschrieben, dass sie aus diesem Verzeichnis heraus laufen. Schreiben Sie Arbeitsdateien in ein Scratch-Verzeichnis, nie in den Ordner der Fähigkeit.
 
 ```bash
-# 1 · Fragefamilien und drei unvereinbare Rahmen austeilen
-python3 scripts/deal.py --brief "eine Art, die Schichtübergabe auf Station zu machen" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · den Vertrag bauen — zweimal, und die Reihenfolge zählt
-python3 scripts/banlist.py --brief "<Briefing>" --instincts instincts.txt \
-    --skeleton "eine Liste, die am Schichtende ausgefüllt wird" --out /tmp/work
-#    …dem Nutzer zeigen, seine Antwort einholen, und erst dann:
-python3 scripts/banlist.py --brief "<Briefing>" --instincts instincts.txt \
-    --skeleton "eine Liste, die am Schichtende ausgefüllt wird" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · Fragefamilien und drei unvereinbare Rahmen austeilen
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · den Vertrag bauen — zweimal, und die Reihenfolge zählt. --instincts ist eine
+#     Datei, die Sie selbst schreiben: eine naheliegende Antwort pro Zeile, zwölf Stück.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …dem Nutzer als Ausschlussliste zeigen, seine Antwort einholen, und erst dann:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · beweisen, dass die drei Ansätze wirklich drei sind
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · Spezifikation, Sidecar und Vertrag gemeinsam durchs Gatter — alle drei sind Pflicht
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+Jede dort genannte Datei liegt dem Repository bei, der Block läuft also genau so, und alle vier Schritte enden mit `0`; Schritt 2 erzeugt `references/example-banlist.json` exakt wieder. Tauschen Sie sie im Verlauf gegen die Ihrer eigenen Sitzung.
+
+**`approaches.json` schreiben Sie von Hand.** `deal.py` teilt die Rahmen aus; pro ausgeteiltem Rahmen schreiben Sie einen Ansatz in ein Objekt mit dem Schlüssel `approaches` — eine `id`, eine `frame_id` aus dem Rahmendeck, ein `summary` von mindestens 120 Einheiten, ein `failure_mode` von mindestens 60, das sagt, woran *dieser* Ansatz in *diesem* Briefing scheitert, und `unsafe_seat` bei genau einem auf wahr. `references/decks/approaches-schema.json` dokumentiert jedes Feld und jede Untergrenze der Prüfung; `references/example-approaches.json` ist eine bestehende Datei, deren Form Sie übernehmen können.
+
 `--confirmed` protokolliert eine Zustimmung, die bereits stattgefunden hat. Sie zu setzen, bevor der Nutzer die Liste gesehen hat, ist eine Lüge, auf die sich die restliche Kette dann stützt, und das Gatter kann sie nicht erkennen — deshalb zwei Aufrufe statt eines Schalters.
+
+Der Vertrag selbst lässt sich dagegen nicht austauschen. Das Gatter baut ihn aus dem wieder auf, was `concept.json` erklärt, und weist jede Datei ab, der einer der verbrannten Instinkte, eine der Ausschlüsse des Nutzers oder ein Eintrag des mitgelieferten Klischeedecks fehlt — und dieses Deck wird gegen die Spezifikation geprüft, gleich welcher Vertrag ankommt, sodass eine kürzere Datei nie ein kürzeres Lint bedeutet.
 
 `cliche_lint.py` ist für **Entwürfe mitten in der Sitzung**. Auf eine fertige Spezifikation angewandt, markiert es deren eigenen Verbotslisten-Abschnitt; die fertige Spezifikation prüft `spec_gate.py`, und das schneidet diesen Abschnitt vorher heraus.
 
@@ -215,7 +226,11 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # eine komplette Sitzung, samt Verworfenem
 │   ├── example-concept.md      # die Spec, die diese Sitzung ergab
 │   ├── example-concept.json    # ihr Sidecar — beide bestehen die Gates und dienen als Fixtures
-│   └── decks/                  # Frage-Familien · Rahmen · Klischees · Spec-Schema
+│   ├── example-approaches.json # Eingabe für Stufe 3, in der Form, die divergence_check.py liest
+│   ├── example-banlist.json    # der Vertrag, gegen den all das geprüft wurde
+│   ├── example-instincts.txt   # die zwölf Instinkte, aus denen er gebaut wurde
+│   ├── example-exclusions.txt  # und die drei Ausschlüsse des Nutzers
+│   └── decks/                  # Frage-Familien · Rahmen · Klischees · Spec-Schema · Ansatz-Schema
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

@@ -136,29 +136,40 @@ codex plugin add imagination-brainstorming@djfksjd
 
 ### 自己跑这些脚本
 
-Python 3.11，只用标准库，无需安装。脚本在 `skills/imagination-brainstorming/scripts/`。工作文件一律写进临时目录，绝不要写进技能文件夹。
+Python 3.11，只用标准库，无需安装。技能在 `skills/imagination-brainstorming/`，下面每条命令都假定你已经进入那个目录。工作文件一律写进临时目录，绝不要写进技能文件夹。
 
 ```bash
-# 1 · 发出问题族与三个互不相容的取景框
-python3 scripts/deal.py --brief "病区交接班的方式" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · 建立契约 —— 调用两次，顺序很重要
-python3 scripts/banlist.py --brief "<简报>" --instincts instincts.txt \
-    --skeleton "在一班结束时填写的检查表" --out /tmp/work
-#    …给用户看，拿到回答之后，才可以：
-python3 scripts/banlist.py --brief "<简报>" --instincts instincts.txt \
-    --skeleton "在一班结束时填写的检查表" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · 发出问题族与三个互不相容的取景框
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · 建立契约 —— 调用两次，顺序很重要。--instincts 是你自己写的文件：
+#     每行一个最先想到的答案，写十二个。
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …作为排除清单给用户看，拿到回答之后，才可以：
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · 证明这三个方案确实是三个
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · 把规格、边车与契约一起送进网关 —— 三个都必需
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+上面提到的文件都随仓库一起发布，所以这段可以照抄照跑，四步都会以 `0` 结束；第 2 步会原样重建出 `references/example-banlist.json`。往下走的时候，把它们换成你自己这一场的文件即可。
+
+**`approaches.json` 要自己写。** `deal.py` 只负责发取景框，你按发到的每个取景框各写一个方案，放进一个带 `approaches` 键的对象里 —— `id`、取自取景框牌组的 `frame_id`、不少于 120 单位的 `summary`、不少于 60 单位、说明*这一个*方案在*这份*简报里会怎么垮掉的 `failure_mode`，以及只在其中一个上为真的 `unsafe_seat`。字段与下限全部写在 `references/decks/approaches-schema.json`，`references/example-approaches.json` 是一份可以照抄形状的通过样例。
+
 `--confirmed` 记录的是已经发生过的同意。在用户看到清单之前就打上它，是一个后续整条流水线都会依赖的谎言，而网关无从察觉 —— 所以它被设计成两次调用，而不是一个开关。
+
+契约本身则换不掉。网关会依据 `concept.json` 所声明的内容重建契约，凡是缺了任何一条烧掉的直觉、用户自己的排除项，或内置陈词牌组中任何一条的文件，一律拒收 —— 而且无论送进来的是什么契约，那副牌组都会照样拿来检查规格，所以递一份更短的文件绝不会换来一次更短的 lint。
 
 `cliche_lint.py` 是给**会话中途的草稿**用的。拿它去跑一份成稿规格，它会标出规格自己的禁用清单章节；负责检查成稿的是 `spec_gate.py`，它会先把那一段切掉。
 
@@ -215,7 +226,11 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # 一次完整会话，含被砍掉的方案
 │   ├── example-concept.md      # 那次会话产出的规格
 │   ├── example-concept.json    # 它的伴随文件——两者都过闸、都是测试夹具
-│   └── decks/                  # 问题族 · 框架 · 陈词滥调 · 规格模式
+│   ├── example-approaches.json # 第 3 阶段的输入，divergence_check.py 读的形状
+│   ├── example-banlist.json    # 上面这些过闸时用的契约
+│   ├── example-instincts.txt   # 建立该契约的十二条直觉
+│   ├── example-exclusions.txt  # 以及用户自己的三条
+│   └── decks/                  # 问题族 · 框架 · 陈词滥调 · 规格模式 · 方案模式
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

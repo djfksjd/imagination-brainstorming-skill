@@ -136,29 +136,40 @@ codex plugin add imagination-brainstorming@djfksjd
 
 ### 스크립트 직접 돌리기
 
-Python 3.11, 표준 라이브러리, 설치할 것 없음. 스크립트는 `skills/imagination-brainstorming/scripts/`에 있고, 작업 파일은 반드시 스크래치 디렉터리에 쓴다 — 스킬 폴더 안에 쓰지 않는다.
+Python 3.11, 표준 라이브러리, 설치할 것 없음. 스킬은 `skills/imagination-brainstorming/`에 있고, 아래 명령은 모두 그 디렉터리 안에서 실행하는 것을 전제로 쓰였다. 작업 파일은 반드시 스크래치 디렉터리에 쓴다 — 스킬 폴더 안에 쓰지 않는다.
 
 ```bash
-# 1 · 질문 계열과 서로 양립 불가능한 프레임 셋을 뽑는다
-python3 scripts/deal.py --brief "병동 교대 인수인계 방법" --run 1 --out /tmp/work
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
 
-# 2 · 계약을 만든다 — 두 번 호출하고, 순서가 중요하다
-python3 scripts/banlist.py --brief "<브리프>" --instincts instincts.txt \
-    --skeleton "교대 끝에 채워 넣는 체크리스트" --out /tmp/work
-#    …사용자에게 보여주고, 답을 받은 다음에야:
-python3 scripts/banlist.py --brief "<브리프>" --instincts instincts.txt \
-    --skeleton "교대 끝에 채워 넣는 체크리스트" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 1 · 질문 계열과 서로 양립 불가능한 프레임 셋을 뽑는다
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · 계약을 만든다 — 두 번 호출하고, 순서가 중요하다. --instincts는 직접 쓰는 파일이다:
+#     가장 먼저 떠오르는 답을 한 줄에 하나씩, 열두 개.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …배제 목록으로서 사용자에게 보여주고, 답을 받은 다음에야:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · 세 안이 정말로 셋인지 증명한다
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · 스펙과 사이드카와 계약을 함께 게이트에 건다 — 셋 다 필수
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+여기 나오는 파일은 전부 저장소에 들어 있다. 그래서 이 블록은 적힌 그대로 돌아가고 네 단계 모두 `0`으로 끝난다. 2번은 `references/example-banlist.json`을 그대로 다시 만들어 낸다. 진행하면서 자기 세션의 파일로 바꿔 넣으면 된다.
+
+**`approaches.json`은 직접 쓰는 파일이다.** 프레임은 `deal.py`가 뽑아 주고, 뽑힌 프레임마다 하나씩 접근안을 써서 `approaches` 키를 가진 객체에 담는다 — `id`, 프레임 덱에서 가져온 `frame_id`, 120단위 이상의 `summary`, 이 브리프에서 *이* 안이 어떻게 무너지는지 말하는 60단위 이상의 `failure_mode`, 그리고 정확히 하나에만 참으로 두는 `unsafe_seat`. 모든 필드와 하한선은 `references/decks/approaches-schema.json`에 적혀 있고, `references/example-approaches.json`은 형태를 그대로 베껴 갈 수 있는 통과 예시다.
+
 `--confirmed`는 이미 일어난 동의의 기록이다. 사용자가 목록을 보기 전에 이 플래그를 세우는 것은 이후 파이프라인 전체가 의존하게 되는 거짓말이고, 게이트는 그걸 탐지할 방법이 없다 — 그래서 플래그 하나가 아니라 두 번 호출이다.
+
+반면 계약 자체는 바꿔치기할 수 없다. 게이트는 `concept.json`이 선언한 내용으로 계약을 다시 만들어 보고, 소각된 직감 하나든 사용자가 직접 넣은 배제 하나든 번들 클리셰 덱의 항목 하나든 빠진 파일은 거부한다 — 그리고 그 덱은 어떤 계약이 들어오든 스펙에 그대로 적용되므로, 짧은 파일을 건넨다고 린트가 짧아지는 일은 없다.
 
 `cliche_lint.py`는 **세션 중간의 초안용**이다. 완성된 스펙에 돌리면 스펙 자신의 금지 목록 섹션을 지적한다. 완성된 스펙을 린트하는 것은 `spec_gate.py`이고, 그쪽은 해당 구간을 먼저 잘라낸다.
 
@@ -215,7 +226,11 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # 잘라낸 것까지 포함한 실제 세션 1건
 │   ├── example-concept.md      # 그 세션이 만들어낸 스펙
 │   ├── example-concept.json    # 그 사이드카 — 둘 다 게이트 통과·테스트 픽스처 겸용
-│   └── decks/                  # 질문 가족 · 프레임 · 클리셰 · 스펙 스키마
+│   ├── example-approaches.json # 3단계 입력 — divergence_check.py가 읽는 형태
+│   ├── example-banlist.json    # 위 파일들을 게이트에 걸 때 쓴 계약
+│   ├── example-instincts.txt   # 그 계약을 만든 열두 개의 직감
+│   ├── example-exclusions.txt  # 그리고 사용자가 직접 넣은 셋
+│   └── decks/                  # 질문 가족 · 프레임 · 클리셰 · 스펙 스키마 · 접근안 스키마
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 
