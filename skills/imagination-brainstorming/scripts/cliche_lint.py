@@ -27,16 +27,18 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
-        load_banlist, load_deck, lint_text, mention_bound_failures, read_text_arg,
-        strip_mention_markers,
+        lint_document, releasable_ids, load_banlist, load_deck, lint_text, mention_bound_failures,
+        mention_placement_failures, normalize, protected_lint_entries, protected_statements,
+        read_text_arg, strip_mention_markers,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
-        load_banlist, load_deck, lint_text, mention_bound_failures, read_text_arg,
-        strip_mention_markers,
+        lint_document, releasable_ids, load_banlist, load_deck, lint_text, mention_bound_failures,
+        mention_placement_failures, normalize, protected_lint_entries, protected_statements,
+        read_text_arg, strip_mention_markers,
     )
 
 FAIL_CODE = 3
@@ -63,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         cliches = load_deck("cliches")
         patterns = cliches["structural_patterns"]
         manual: list[dict[str, Any]] = []
+        payload: dict[str, Any] = {}
         if args.banlist:
             payload = load_banlist(args.banlist)
             entries = payload["entries"]
@@ -80,11 +83,24 @@ def main(argv: list[str] | None = None) -> int:
                     f"a mention block names {'no rule id' if not ids else 'unknown rule id(s) ' + ', '.join(unknown)} "
                     f"({body.strip()[:60]}...). Mark the span with the id printed in square brackets by this lint"
                 )
-        bound_failures = mention_bound_failures(mentions, known)
+        bound_failures = mention_bound_failures(mentions, known) + mention_placement_failures(draft)
         if bound_failures:
             raise EngineError(bound_failures[0])
-        findings = lint_text(strip_mention_markers(draft), entries, patterns,
-                             set(csv_list(args.allow)), mentions)
+        findings = lint_document(draft, entries, patterns)
+        # `--allow` is a drafting convenience and is applied after the fact, to
+        # the deck ids only, so it can never reach a burnt instinct or one of
+        # the user's exclusions - the same set `releasable_ids()` holds.
+        released = {i for i in csv_list(args.allow) if i in releasable_ids()}
+        findings = [f for f in findings if f["id"] not in released]
+        # The protected set is recomputed from the contract's own content and
+        # linted separately, with no release of any kind: a hand-edited ban list
+        # whose `instinct-01` was renamed to a bundled deck id would otherwise
+        # shrink the drafting lint exactly as it shrank the gate's.
+        already = {(f["line"], normalize(f["match"])) for f in findings}
+        for f in lint_text(strip_mention_markers(draft),
+                           protected_lint_entries(protected_statements(None, payload)), []):
+            if (f["line"], normalize(f["match"])) not in already:
+                findings.append(f)
     except EngineError as exc:
         die(str(exc), 1)
         return 1

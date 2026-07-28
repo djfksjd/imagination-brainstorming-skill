@@ -208,3 +208,53 @@ def test_a_mention_does_not_release_the_sidecar_elsewhere(run, references, banli
               "--markdown", spec_with(MARKED), "--banlist", str(banlist), "--json")
     assert res.code == 2
     assert any("magical" in f for f in res.json()["failures"])
+
+
+# --- the release reaches the marked characters and no others ----------------
+#
+# The release used to locate its span by searching every line of the document
+# for the marked *text*. One marker therefore released every line identical to
+# the marked one, anywhere in the file: a fenced marker whose middle line was a
+# bare affirmative sentence released unlimited unmarked copies of that sentence
+# elsewhere, so "at most 5 markers x 200 units" bounded nothing at all. The span
+# is now located by source offset - the marked characters are blanked where they
+# stand and linted separately - so a copy elsewhere is a different span.
+
+COPIED = "The onboarding is seamless for every new nurse."
+
+
+def test_a_marker_does_not_release_identical_copies_elsewhere(run, draft, banlist):
+    text = ("<!-- mention: hollow-seamless -->\n```\n" + COPIED + "\n```\n<!-- /mention -->\n\n"
+            + "\n\n".join([COPIED] * 6))
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist), "--json")
+    assert res.code == 3, res.out
+    lines = sorted({f["line"] for f in res.json()["findings"] if f["id"] == "hollow-seamless"})
+    assert len(lines) == 6, res.out
+    assert 3 not in lines, "the marked line itself should still be released"
+
+
+def test_the_release_is_the_span_not_the_sentence(run, draft, banlist):
+    """The same sentence, once inside the span and once outside it on the same
+    line. Only the one inside is released."""
+    text = ('<!-- mention: hollow-magical -->not magical<!-- /mention -->, '
+            'and the ward calls the result magical.')
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist), "--json")
+    assert res.code == 3, res.out
+    assert [f["id"] for f in res.json()["findings"]] == ["hollow-magical"], res.out
+
+
+def test_a_marker_opened_inside_a_word_is_refused(run, draft, banlist):
+    """Blanking the span where it stands is what makes the release exact, and it
+    creates one seam: a marker opened mid-word would leave half the banned word
+    outside the span and half inside, matching neither, while an HTML comment is
+    invisible to the reader and the rendered page still says the word."""
+    text = "the region is magi<!-- mention: hollow-magical -->not magical<!-- /mention -->cal"
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 1, res.out
+    assert "middle of a word" in res.err
+
+
+def test_a_marker_at_a_word_boundary_is_accepted(run, draft, banlist):
+    text = '<!-- mention: hollow-magical -->"magical"<!-- /mention --> is the brief\'s word.'
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 0, res.out

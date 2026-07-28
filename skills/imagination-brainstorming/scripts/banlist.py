@@ -36,20 +36,21 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_deck, normalize,
-        read_text_arg, text_units, write_json,
+        VERSION, MATCHABLE_MAX_WORDS, UsageParser, EngineError, csv_list, deck_lint_entries, die,
+        is_matchable_phrase, load_deck, normalize, read_text_arg, text_units, write_json,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_deck, normalize,
-        read_text_arg, text_units, write_json,
+        VERSION, MATCHABLE_MAX_WORDS, UsageParser, EngineError, csv_list, deck_lint_entries, die,
+        is_matchable_phrase, load_deck, normalize, read_text_arg, text_units, write_json,
     )
 
 MIN_INSTINCTS = 8
 MIN_SKELETON_UNITS = 29
-MATCHABLE_MAX_WORDS = 6
+# The split between a matchable ban and a manual reminder lives in engine.py, so
+# spec_gate.py can replay it without importing this builder.
 BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)])\s*")
 GATE_FAIL = 2
 
@@ -88,8 +89,7 @@ def parse_lines(raw: str) -> list[str]:
 def classify(items: list[str], prefix: str, group: str, source: str,
              entries: list[dict[str, Any]], manual: list[dict[str, str]]) -> None:
     for i, item in enumerate(items, start=1):
-        words = [w for w in re.split(r"\s+", item.strip()) if w]
-        if len(words) <= MATCHABLE_MAX_WORDS:
+        if is_matchable_phrase(item):
             entries.append({
                 "id": f"{prefix}-{i:02d}", "phrase": item, "tier": "ban",
                 "group": group, "source": source,

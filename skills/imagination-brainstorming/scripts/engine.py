@@ -16,6 +16,7 @@ import json
 import random
 import re
 import sys
+import time
 import unicodedata
 from pathlib import Path
 from typing import Any
@@ -502,6 +503,137 @@ def deck_lint_entries(cliches: dict[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
+# --- the protected set -------------------------------------------------------
+#
+# Five times now the same defect has shipped: an artefact the judged party
+# writes stopped a protected ban from firing. `allowed`; mention markers; a
+# supplied regex that hung the gate; an `id` collided with a bundled deck id so
+# `lint_entries` dropped the entry; and membership of `model_instincts` turning
+# one of the user's own exclusions into a warning. Each was closed on its own
+# lever, and the next lever was already in the tree.
+#
+# The cause is structural, not five accidents. The gate enforced the two things
+# it exists to hold - the burnt first instincts and the user's own exclusions -
+# by consulting the *structure* of a file the judged party writes: which id an
+# entry carries, which tier, which field it sits in, which of the two files it
+# appears in. Every one of those is a lever.
+#
+# So the protected set is recomputed here, by content, and enforced separately
+# from the supplied structure. Two properties do the work:
+#
+# * it is a *union* over every location either file records a statement in - the
+#   sidecar's `model_instincts` and `user_exclusions`, the ban list's copies of
+#   both, and any `entries`/`manual_checks` row whose id carries a session
+#   prefix. Moving a statement between fields, between files, or renaming its id
+#   removes it from at most one source, and the union still holds it. Editing is
+#   therefore monotone: it can add to the protected set, never subtract.
+# * ownership is decided the same way and resolves to the *user* on conflict, so
+#   copying the user's exclusion into `model_instincts` cannot discharge it.
+#
+# WHAT THIS DOES NOT ESTABLISH, stated plainly because this repository has
+# shipped three comments asserting properties the code did not hold: the gate
+# has no source for these statements that the judged party does not write. There
+# is no dump, no signature and no record from outside the session at gate time.
+# A statement deleted from *every* location in *both* files is gone, and nothing
+# here detects that - what it costs is a consistent edit of two files rather
+# than one field, and it is caught only insofar as the sidecar's own minimum
+# counts and the two files' agreement checks catch it. This is a closure of the
+# substitution routes, not of the deletion route.
+MATCHABLE_MAX_WORDS = 6
+
+# The id prefixes banlist.py gives to session-supplied rules, and who owns each.
+# `--extra` phrases are put there by the user, so they are treated as the
+# user's. Reading an id is additive only: an id that has been renamed simply
+# contributes nothing, and the statement is still held by the lists above.
+SESSION_ID_OWNER = (("instinct-", "model"), ("user-", "user"), ("extra-", "user"))
+
+
+def is_matchable_phrase(item: str) -> bool:
+    """Whether a statement is short enough to be matched literally.
+
+    The same rule banlist.py classifies with, kept here so the gate can replay
+    the split without importing the builder.
+    """
+    return len([w for w in re.split(r"\s+", str(item).strip()) if w]) <= MATCHABLE_MAX_WORDS
+
+
+def owner_of_session_id(rule_id: Any) -> str | None:
+    text = str(rule_id or "")
+    for prefix, owner in SESSION_ID_OWNER:
+        if text.startswith(prefix):
+            return owner
+    return None
+
+
+def protected_statements(concept: Any, banlist: Any) -> dict[str, tuple[str, str]]:
+    """The burnt instincts and the user's exclusions, by content.
+
+    Returns `{normalized statement: (statement as written, "user" | "model")}`,
+    unioned over every place either file records one. See the note above for
+    what this establishes and what it does not.
+    """
+    found: dict[str, tuple[str, str]] = {}
+
+    def add(raw: Any, owner: str) -> None:
+        if not isinstance(raw, str) or not raw.strip():
+            return
+        key = normalize(raw)
+        if not key:
+            return
+        previous = found.get(key)
+        if previous is None:
+            found[key] = (raw.strip(), owner)
+        elif previous[1] != owner:
+            # Recorded as both. The user's reading wins: guessing "model" wrong
+            # costs an exclusion the user asked for and nobody answered, and
+            # guessing "user" wrong costs a note the author has to write.
+            found[key] = (previous[0], "user")
+
+    holders: list[dict[str, Any]] = []
+    if isinstance(concept, dict) and isinstance(concept.get("banlist_contract"), dict):
+        holders.append(concept["banlist_contract"])
+    if isinstance(banlist, dict):
+        holders.append(banlist)
+    for holder in holders:
+        for value in holder.get("model_instincts") or []:
+            add(value, "model")
+        for value in holder.get("user_exclusions") or []:
+            add(value, "user")
+
+    if isinstance(banlist, dict):
+        for entry in banlist.get("entries") or []:
+            if isinstance(entry, dict):
+                owner = owner_of_session_id(entry.get("id"))
+                if owner:
+                    add(entry.get("phrase"), owner)
+        for check in banlist.get("manual_checks") or []:
+            if isinstance(check, dict):
+                owner = owner_of_session_id(check.get("id"))
+                if owner:
+                    add(check.get("statement"), owner)
+    return found
+
+
+def protected_lint_entries(protected: dict[str, tuple[str, str]]) -> list[dict[str, Any]]:
+    """The matchable half of the protected set, as lint entries.
+
+    The ids are minted here (`protected-NN`) rather than read from the artefact,
+    so they are outside `releasable_ids()` by construction and no release of any
+    shape can name one. The tier is always `ban`; the supplied tier is not
+    consulted, because re-tiering was one of the five levers.
+    """
+    out: list[dict[str, Any]] = []
+    for i, key in enumerate(sorted(protected), start=1):
+        statement, owner = protected[key]
+        if not is_matchable_phrase(statement):
+            continue
+        out.append({
+            "id": f"protected-{i:02d}", "phrase": statement, "tier": "ban",
+            "group": "protected", "source": owner,
+        })
+    return out
+
+
 MENTION = re.compile(r"<!--\s*mention:\s*([^<>]*?)\s*-->(.*?)<!--\s*/mention\s*-->", re.S)
 MENTION_MARKER = re.compile(r"<!--\s*/?mention(?::[^<>]*?)?\s*-->")
 
@@ -643,38 +775,76 @@ def strip_mention_markers(text: str) -> str:
 
     The marker names a ban id, and several ids contain the banned word - the
     comment `<!-- mention: hollow-magical -->` would otherwise be flagged for
-    saying 'magical'.
+    saying 'magical'. Used where *no* release applies and the whole document has
+    to be seen as one string: the protected-set pass.
     """
     return MENTION_MARKER.sub("", text)
 
 
-def _released_spans(line: str, mentions: list[tuple[str, set[str]]], norm: bool) -> list[tuple[int, int, set[str]]]:
-    """Where in this line a mention span sits, and which ids it releases.
+def mention_placement_failures(text: str) -> list[str]:
+    """A marker may not be opened or closed in the middle of a word.
 
-    Matched line by line, so a span covering several lines releases each of its
-    lines separately and a marker never has to sit on the line it opens.
+    `mask_mentions` blanks the marked span where it stands, which is what makes
+    the release exactly the marked span. The seam that creates is real: a marker
+    opened inside a word would leave `magic` outside the span and `al` inside
+    it, and an HTML comment is invisible to the reader, so the rendered document
+    still says the banned word while neither half matches. Requiring the markers
+    to sit at a non-word boundary closes the seam rather than leaving it to be
+    found later.
     """
-    hay = normalize(line) if norm else line
-    spans: list[tuple[int, int, set[str]]] = []
-    if not hay:
-        return spans
-    for body, ids in mentions:
-        for piece in body.splitlines():
-            needle = normalize(piece) if norm else piece.strip()
-            if len(needle) < 3:
-                continue
-            start = 0
-            while True:
-                found = hay.find(needle, start)
-                if found < 0:
-                    break
-                spans.append((found, found + len(needle), ids))
-                start = found + 1
-    return spans
+    failures: list[str] = []
+    blanked = [(m.start(), m.end()) for m in MENTION.finditer(text)]
+    covered = set()
+    for start, end in blanked:
+        covered.update(range(start, end))
+    for m in MENTION_MARKER.finditer(text):
+        if m.start() not in covered:
+            blanked.append((m.start(), m.end()))
+    for start, end in sorted(blanked):
+        before = text[start - 1] if start else ""
+        after = text[end] if end < len(text) else ""
+        if (before and re.match(r"\w", before)) or (after and re.match(r"\w", after)):
+            failures.append(
+                f"a mention marker is opened or closed in the middle of a word "
+                f"({text[max(0, start - 20):end + 20].strip()!r}) - put the marker at a "
+                "word boundary, or the banned word is split across the edge of the span and neither half "
+                "matches while the rendered document still reads it whole"
+            )
+    return failures
 
 
-def _is_released(spans: list[tuple[int, int, set[str]]], start: int, end: int, rule_id: str) -> bool:
-    return any(s <= start and end <= t and rule_id in ids for s, t, ids in spans)
+def mask_mentions(text: str) -> tuple[str, list[tuple[int, str, set[str]]]]:
+    """Blank each marked span where it stands, and hand it back separately.
+
+    Returns `(masked_text, [(first line number of the body, body, ids)])`.
+    Blanking preserves every offset and every newline, so line numbers in the
+    masked text are the line numbers of the source.
+
+    This replaces a release that located its spans by *searching every line for
+    the marked text*. Matching by content meant one marker released every line
+    in the document identical to the marked one: a fenced block whose middle
+    line was a bare affirmative assertion released unlimited unmarked copies of
+    that assertion elsewhere, so "at most 5 markers x 200 units" bounded
+    nothing. A span located by source offset cannot do that - the release
+    reaches the characters that were marked and no others.
+    """
+    out: list[str] = []
+    released: list[tuple[int, str, set[str]]] = []
+    cursor = 0
+    for match in MENTION.finditer(text):
+        ids = {i.strip() for i in match.group(1).replace(";", ",").split(",") if i.strip()}
+        body = match.group(2)
+        out.append(text[cursor:match.start()])
+        out.append("".join(ch if ch == "\n" else " " for ch in match.group(0)))
+        cursor = match.end()
+        if body.strip():
+            released.append((text.count("\n", 0, match.start(2)) + 1, body, ids))
+    out.append(text[cursor:])
+    masked = "".join(out)
+    # A marker with no partner is not a span; blank it too, so the ids inside it
+    # are not linted as prose, and keep the offsets.
+    masked = MENTION_MARKER.sub(lambda m: "".join(c if c == "\n" else " " for c in m.group(0)), masked)
+    return masked, released
 
 
 # --- structural_patterns[].regex is an artefact the judged party supplies -----
@@ -722,11 +892,43 @@ def _is_released(spans: list[tuple[int, int, set[str]]], start: int, end: int, r
 # depend on how fast the box was, which is the same non-determinism this
 # repo's contract-substitution fixes have been closing everywhere else.
 PATTERN_TIME_BUDGET_SECONDS = 2.0
-PATTERN_TEXT_CAP = 4000  # chars of one line handed to a structural pattern
+# One line is scanned in overlapping windows rather than truncated. The first
+# version of this capped the line at 4000 characters and threw the rest away,
+# which meant a structural ban simply stopped firing past character 4000 of a
+# long paragraph - silently, exit 0 - while the sentence three lines from it in
+# SKILL.md said that "a ban the user believed was active but that quietly
+# stopped firing would be worse than the hang it replaces". It was. The window
+# still bounds the work handed to the matcher in one call, which is what the
+# cap was for on hosts with no wall-clock backstop; nothing is dropped, and
+# running out of budget is a refusal that names the pattern, never a silent
+# drop.
+PATTERN_WINDOW_CHARS = 4000
+PATTERN_WINDOW_OVERLAP = 512
 
 
 class _PatternTimeout(Exception):
     """Raised from the SIGALRM handler; never escapes `_finditer_bounded`."""
+
+
+class _Span:
+    """The three members of `re.Match` that `lint_text` uses, at an absolute
+    offset in the line rather than an offset in the window it was found in."""
+
+    __slots__ = ("_start", "_end", "_text")
+
+    def __init__(self, start: int, end: int, text: str) -> None:
+        self._start, self._end, self._text = start, end, text
+
+    def start(self) -> int:
+        return self._start
+
+    def end(self) -> int:
+        return self._end
+
+    def group(self, index: int = 0) -> str:
+        if index != 0:  # pragma: no cover - lint_text only ever asks for group 0
+            raise IndexError("no such group")
+        return self._text
 
 
 def _quantifier_span(src: str, i: int) -> tuple[bool, int]:
@@ -861,66 +1063,96 @@ def catastrophic_shape(regex_src: str) -> str | None:
     return None
 
 
-def _finditer_bounded(rx: re.Pattern[str], text: str, pattern_id: str,
-                       budget: float = PATTERN_TIME_BUDGET_SECONDS) -> list[re.Match[str]]:
-    """Run `rx` over `text`, refusing rather than hanging if it runs long.
+def _finditer_window(rx: re.Pattern[str], text: str, pattern_id: str, budget: float) -> list[re.Match[str]]:
+    """One window, with the wall-clock backstop around it.
 
-    `text` is capped to `PATTERN_TEXT_CAP` characters first: bounding the
-    input bounds the worst case for shapes that are slow but not exponential,
-    independently of the timer below.
-
-    The timer itself needs `SIGALRM`/`setitimer`, which is POSIX (macOS and
-    Linux have it; Windows does not). Where it is unavailable this silently
-    runs unbounded except for the length cap and the structural check already
-    applied to the pattern before it reached here - see the note above
+    The timer needs `SIGALRM`/`setitimer`, which is POSIX (macOS and Linux have
+    it; Windows does not). Where it is unavailable this runs unbounded except
+    for the window length and the structural check already applied to the
+    pattern before it reached here - see the note above
     `PATTERN_TIME_BUDGET_SECONDS`.
     """
-    bounded_text = text[:PATTERN_TEXT_CAP]
     has_alarm = _signal is not None and hasattr(_signal, "SIGALRM") and hasattr(_signal, "setitimer")
     if not has_alarm:
-        return list(rx.finditer(bounded_text))
+        return list(rx.finditer(text))
 
     def _on_alarm(signum: int, frame: Any) -> None:
         raise _PatternTimeout()
 
     previous_handler = _signal.signal(_signal.SIGALRM, _on_alarm)
-    _signal.setitimer(_signal.ITIMER_REAL, budget)
+    _signal.setitimer(_signal.ITIMER_REAL, max(budget, 0.001))
     try:
-        return list(rx.finditer(bounded_text))
+        return list(rx.finditer(text))
     except _PatternTimeout:
         raise EngineError(
-            f"pattern {pattern_id} did not finish matching within {budget}s and was refused "
-            "rather than left to hang - rewrite it to avoid nested repetition (e.g. `(x+)+`)"
+            f"pattern {pattern_id} did not finish matching within {PATTERN_TIME_BUDGET_SECONDS}s and was "
+            "refused rather than left to hang - rewrite it to avoid nested repetition (e.g. `(x+)+`)"
         ) from None
     finally:
         _signal.setitimer(_signal.ITIMER_REAL, 0)
         _signal.signal(_signal.SIGALRM, previous_handler)
 
 
+def _finditer_bounded(rx: re.Pattern[str], text: str, pattern_id: str,
+                       budget: float = PATTERN_TIME_BUDGET_SECONDS) -> list[Any]:
+    """Run `rx` over the whole of `text`, refusing rather than hanging.
+
+    The line is scanned in `PATTERN_WINDOW_CHARS` windows overlapping by
+    `PATTERN_WINDOW_OVERLAP`, and every window is scanned - the text is never
+    truncated. `budget` is the total across the windows of one line, so a long
+    line cannot buy more time than a short one; running out of it raises rather
+    than returning a short answer.
+
+    The overlap is the stated limit: a single match longer than
+    `PATTERN_WINDOW_OVERLAP` characters that straddles a window boundary can be
+    missed. Every structural pattern in the bundled deck matches a clause, three
+    orders of magnitude below that, and a test pins it - but a hand-written
+    pattern that matches half a page is a shape this does not see.
+    """
+    if len(text) <= PATTERN_WINDOW_CHARS:
+        return _finditer_window(rx, text, pattern_id, budget)
+
+    step = PATTERN_WINDOW_CHARS - PATTERN_WINDOW_OVERLAP
+    out: list[Any] = []
+    seen: set[tuple[int, int]] = set()
+    remaining = budget
+    for start in range(0, len(text), step):
+        if remaining <= 0:
+            raise EngineError(
+                f"pattern {pattern_id} did not finish matching this line within "
+                f"{PATTERN_TIME_BUDGET_SECONDS}s and was refused rather than run on part of it - a rule "
+                "that quietly stops firing partway along a line is worse than one that is refused"
+            )
+        began = time.monotonic()
+        for m in _finditer_window(rx, text[start:start + PATTERN_WINDOW_CHARS], pattern_id, remaining):
+            span = (start + m.start(), start + m.end())
+            if span not in seen:
+                seen.add(span)
+                out.append(_Span(span[0], span[1], m.group(0)))
+        remaining -= time.monotonic() - began
+    out.sort(key=lambda m: (m.start(), m.end()))
+    return out
+
+
 def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str, Any]],
-              allow: set[str] | None = None,
-              mentions: list[tuple[str, set[str]]] | None = None) -> list[dict[str, Any]]:
+              allow: set[str] | None = None, line_offset: int = 0) -> list[dict[str, Any]]:
     """Find banned phrases and pitch-shaped sentences, with line numbers.
 
-    `mentions` releases named ids inside named spans only. A regex cannot tell
-    a word being used from the same word being quoted or denied - "the region
-    is not magical" was refused for saying so - and this is the same blindness
-    a similarity score had when it could not separate an assertion from a
-    quotation, which is why bind markers replaced it here. The fix is the same
-    shape: the author marks the span, names the id, and the mark is visible in
-    the source and reported at the gate. What it does not do is decide anything
-    for itself. It cannot verify that the word really is mentioned rather than
-    used; it makes the claim explicit, local to one span, and reviewable,
-    instead of leaving the only escape a blanket release of the whole rule.
+    There is one release surface, `allow`, and it is narrowed to the bundled
+    deck below. Mention markers used to be a second one, passed in as spans of
+    *text* and located by searching each line for that text; that is gone.
+    `mask_mentions` now blanks a marked span where it stands and hands the body
+    back as its own document, which the caller lints with `allow` set to the
+    ids the marker named. The release therefore reaches exactly the characters
+    that were marked, because they are the only characters in that call.
     """
     # One place where every release, present or future, is narrowed to the
-    # bundled deck. `allow` and `mentions` are the two routes that exist today
-    # and each of them was a general release before it was bounded; a third
-    # route added later arrives here too, and cannot exempt a burnt instinct or
-    # one of the user's exclusions without editing this function.
+    # bundled deck. It is not, on its own, what protects a burnt instinct or a
+    # user exclusion: those are enforced by a set recomputed from content at the
+    # caller (`protected_statements`), outside this function and outside the
+    # supplied ban list's structure entirely.
     releasable = releasable_ids()
     allow = {i for i in (allow or set()) if i in releasable}
-    mentions = [(body, ids & releasable) for body, ids in (mentions or [])]
     findings: list[dict[str, Any]] = []
     compiled = []
     for e in entries:
@@ -942,16 +1174,12 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
         except re.error as exc:
             raise EngineError(f"pattern {p['id']} is not a valid regex: {exc}") from exc
 
-    for lineno, line in enumerate(text.splitlines(), start=1):
+    for lineno, line in enumerate(text.splitlines(), start=1 + line_offset):
         norm = normalize(line)
         if not norm:
             continue
-        norm_spans = _released_spans(line, mentions, norm=True)
-        raw_spans = _released_spans(line, mentions, norm=False)
         for e, rx in compiled:
             for m in rx.finditer(norm):
-                if _is_released(norm_spans, m.start(), m.end(), e["id"]):
-                    continue
                 findings.append({
                     "id": e["id"], "kind": "phrase", "tier": e["tier"],
                     "group": e.get("group", ""), "source": e.get("source", ""),
@@ -960,8 +1188,6 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
                 break
         for p, rx in compiled_patterns:
             for m in _finditer_bounded(rx, line, p["id"]):
-                if _is_released(raw_spans, m.start(), m.end(), p["id"]):
-                    continue
                 findings.append({
                     "id": p["id"], "kind": "pattern", "tier": p["tier"],
                     "group": "structural", "source": "deck",
@@ -969,4 +1195,21 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
                     "why": p.get("why", ""),
                 })
                 break
+    return findings
+
+
+def lint_document(text: str, entries: list[dict[str, Any]], patterns: list[dict[str, Any]],
+                  line_offset: int = 0) -> list[dict[str, Any]]:
+    """Lint a document that may carry mention markers.
+
+    The marked spans are blanked in place and linted separately, each with only
+    the ids its own marker named. Every caller that lints author-written prose
+    goes through here, so the release cannot be wired up two different ways in
+    two scripts again.
+    """
+    masked, released = mask_mentions(text)
+    findings = lint_text(masked, entries, patterns, set(), line_offset)
+    for first_line, body, ids in released:
+        findings.extend(lint_text(body, entries, patterns, ids, line_offset + first_line - 1))
+    findings.sort(key=lambda f: (f["line"], str(f["id"])))
     return findings

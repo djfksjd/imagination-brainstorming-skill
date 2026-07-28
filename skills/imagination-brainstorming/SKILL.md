@@ -322,10 +322,16 @@ region is not magical" was refused for saying so. Mark that span in place:
 <!-- mention: hollow-magical -->The region is not magical<!-- /mention -->
 ```
 
-The release covers that span and that rule id only; everything outside it, and
-every other rule inside it, is linted as before. What a marker may do is
-bounded, because one marker naming every id and wrapping a whole document
-released the entire contract and exited 0:
+The release covers those characters and that rule id only; everything outside
+them, and every other rule inside them, is linted as before. "Those characters"
+is exact: the marked span is blanked where it stands and linted as its own
+document. An earlier version located the span by searching every line for the
+marked *text*, so one marker released every line in the file identical to the
+marked one - a fenced marker holding one bare affirmative sentence released
+unlimited unmarked copies of that sentence elsewhere, and the bounds below
+bounded nothing. What a marker may do is bounded, because one marker naming
+every id and wrapping a whole document released the entire contract and exited
+0:
 
 - one rule id per marker, and at most five markers in a document;
 - one paragraph per span, at most 200 units - mark the phrase being quoted, not
@@ -333,9 +339,14 @@ released the entire contract and exited 0:
 - the span has to deny or quote: a denial in any of the eight languages this
   skill documents, or the phrase in double quotation marks. In another language,
   quote it;
+- the markers sit at word boundaries. Blanking the span in place leaves a seam,
+  and a marker opened in the middle of a word would put half a banned word
+  outside the span and half inside it, matching neither, while the comment is
+  invisible to the reader and the rendered page still says the word;
 - a first instinct and a user exclusion cannot be released by a marker, by the
-  ban list's `allowed` field, or by anything else the artefact under judgement
-  says. Only ids from the bundled cliche deck can be released at all.
+  ban list's `allowed` field, or by any id, tier or field of the artefact under
+  judgement. Only ids from the bundled cliche deck can be released at all, and
+  the protected set is enforced separately from all of it - see below.
 
 An unknown or unnamed id is refused, and every mention is printed in the
 verdict. This cannot verify that the word is really mentioned rather than used -
@@ -354,9 +365,13 @@ the gate still accepts it as the reason an entry is absent from the file - it
 just does not stop that phrase being linted. Releasing a bundled cliché at the
 gate means changing `references/decks/cliches.json`, where the change is
 reviewed outside the session that wants it. Bundled entries and structural
-patterns also win on id: a supplied rule carrying a bundled id is dropped
-rather than merged, so the deck cannot be demoted or neutered by the file
-under judgement. `divergence_check.py --banlist` lints the deck first for the
+patterns also win on id: a supplied rule carrying a bundled id does not replace
+it, so the deck cannot be demoted or neutered by the file under judgement. That
+protection was first written as a *drop*, and the drop was itself the next
+hole - renaming a burnt instinct's id to a bundled deck id deleted its phrase
+from the lint, silently, exit 0. A supplied rule that borrows a bundled id is
+now re-keyed to `supplied:<id>` and kept: it loses the borrowed id, keeps its
+phrase, and is still linted. `divergence_check.py --banlist` lints the deck first for the
 same reason: linting only the supplied entries made a hand-written ban list a
 hand-written lint at stage 3. A phrase the sidecar says was burned must be
 present at ban tier as well as present: `warn` never fails and `manual` is not
@@ -381,13 +396,57 @@ missed; that backstop needs `SIGALRM`/`setitimer` and is unavailable on
 Windows, where the structural check is the only defence. Either way the
 refusal names the pattern id and is never a silent drop of the rule - a ban
 the user believed was active but that quietly stopped firing would be worse
-than the hang it replaces.
+than the hang it replaces. That sentence was written before it was true: the
+first version of the bound truncated each line at 4000 characters and threw
+the rest away, so a structural ban stopped firing past that point on a long
+paragraph, with no message and exit 0. A line is now scanned in overlapping
+4000-character windows, all of them, and running out of the per-line time
+budget raises a refusal naming the pattern rather than returning a partial
+answer. The stated limit is the overlap: a single match longer than 512
+characters that straddles a window boundary can be missed. Every structural
+pattern in the bundled deck matches a clause, and a test pins that.
 
-Whether a long exclusion is the user's is read from the sidecar's own instinct
-list, not from the `source` field of the ban list - that field is written by
-the same caller, and setting it to `model` turned every one of the user's
-exclusions into a warning. A statement matching no recorded instinct counts as
-the user's.
+### The protected set
+
+The burnt first instincts and the user's own exclusions are the two things this
+skill exists to hold, and five separate artefact fields have now stopped one of
+them firing: `allowed`, a mention marker, a supplied regex that hung the gate,
+an `id` collided with a bundled deck id, and membership of `model_instincts`.
+Each was closed on its own field, and the next field was already there. So they
+are no longer enforced through the supplied contract's structure at all.
+
+The gate recomputes the protected set **by content**, as a union over every
+place either file records a statement - `model_instincts` and `user_exclusions`
+in `concept.json` and in the ban list, and any `entries` or `manual_checks` row
+whose id carries a session prefix - and lints the spec against that set in a
+separate pass that reads no id, no tier, no `allowed` field and honours no
+release of any kind. Because it is a union, editing is monotone: moving a
+statement between fields, between the two files, renaming or colliding its id,
+re-tiering it, duplicating it or deleting one of its rows removes it from at
+most one source and the set still holds it. Ownership is decided the same way
+and resolves to *the user* on conflict, so declaring one of the user's own
+exclusions to be a model instinct adds a claim rather than discharging the
+written answer it requires. That answer is now required per protected
+statement, not per `manual_checks` row, so deleting the row does not delete the
+obligation.
+
+**What this does not establish.** The gate has no copy of these statements that
+the party under judgement did not write - there is no dump, no signature and no
+record from outside the session at the moment it runs. A statement deleted from
+*every* location in *both* files is gone, and nothing here detects that. What
+the recomputation closes is every route that keeps the statement somewhere while
+stopping it firing; it does not close deletion, and it makes substitution cost a
+consistent edit of two files rather than one field. That limit is pinned as a
+passing case in `tests/test_no_artefact_release.py`, so closing it later is a
+visible change.
+
+Whether a long exclusion is the user's comes from that recomputed set. It used
+to come from the ban list's `source` field - written by the same caller, and
+setting it to `model` turned every one of the user's exclusions into a warning -
+and then from membership of the sidecar's `model_instincts`, which was the same
+defect one commit later: copying the user's sentence into that list discharged
+it unanswered while the gate printed the id `user-01`. A statement recorded
+nowhere as the model's counts as the user's.
 
 Two of the user's long exclusions may not share an id, and neither may two of
 the answers to them, because the gate joins answer to exclusion by that id and

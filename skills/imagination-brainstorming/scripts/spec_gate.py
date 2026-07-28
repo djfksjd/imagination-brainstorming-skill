@@ -34,8 +34,9 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
-        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text,
-        mention_bound_failures, normalize, read_json_arg, releasable_ids, require_mapping,
+        distinct_ratio, extract_mentions, is_matchable_phrase, jaccard, lint_document, load_banlist,
+        load_deck, lint_text, mention_bound_failures, mention_placement_failures, normalize,
+        protected_lint_entries, protected_statements, read_json_arg, releasable_ids, require_mapping,
         strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
@@ -45,8 +46,9 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
-        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text,
-        mention_bound_failures, normalize, read_json_arg, releasable_ids, require_mapping,
+        distinct_ratio, extract_mentions, is_matchable_phrase, jaccard, lint_document, load_banlist,
+        load_deck, lint_text, mention_bound_failures, mention_placement_failures, normalize,
+        protected_lint_entries, protected_statements, read_json_arg, releasable_ids, require_mapping,
         strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
@@ -261,12 +263,17 @@ def lint_entries(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[
     The deck goes in first and wins. Two rules follow, and each closes a hole
     that was open in a version of this file.
 
-    A supplied entry carrying a bundled id is dropped, not merged. Dedup used to
+    A supplied entry carrying a bundled id does not displace it. Dedup used to
     be by id alone with the caller's copy processed first, so a contract could
     carry `{"id": "hollow-seamless", "tier": "warn"}` and the deck's ban-tier
     entry was never added - the deck was displaceable by the file under
-    judgement. A supplied entry that adds a *new* phrase is still added; adding
-    bans cannot weaken a verdict.
+    judgement. The first fix for that *dropped* the supplied entry, which was
+    itself the next hole: renaming a burnt instinct's id to a bundled deck id
+    deleted the instinct's phrase from the lint, silently, exit 0. So the entry
+    is re-keyed instead of dropped. It keeps its phrase, loses the borrowed id,
+    and is linted under `supplied:<id>` - which is not a deck id, so nothing can
+    release it either. Both directions are now closed: the deck cannot be
+    demoted, and a supplied phrase cannot be deleted by colliding with it.
 
     `allowed` is not read here at all. It is an assertion made by the artefact
     being judged, and honouring it made naming a cliche id in the ban list
@@ -282,10 +289,16 @@ def lint_entries(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[
     reserved = {e["id"] for e in deck}
     out: list[dict[str, Any]] = list(deck)
     seen = {f"{e['id']}\x1f{normalize(str(e['phrase']))}" for e in deck}
+    deck_phrases = {normalize(str(e["phrase"])) for e in deck}
     for entry in banlist.get("entries", []):
-        if not isinstance(entry, dict) or entry.get("id") in reserved:
+        if not isinstance(entry, dict):
             continue
-        key = f"{entry.get('id')}\x1f{normalize(str(entry.get('phrase', '')))}"
+        phrase = normalize(str(entry.get("phrase", "")))
+        if entry.get("id") in reserved:
+            if phrase in deck_phrases:
+                continue  # the deck's own copy is already in, at the deck's tier
+            entry = dict(entry, id=f"supplied:{entry.get('id')}")
+        key = f"{entry.get('id')}\x1f{phrase}"
         if key in seen:
             continue
         seen.add(key)
@@ -297,15 +310,27 @@ def lint_patterns(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict
     """The structural patterns, deck first and likewise not displaceable.
 
     A supplied pattern bearing a bundled id used to replace it, so setting
-    `x-for-y` to the regex `$^` deleted a shipped structural ban.
+    `x-for-y` to the regex `$^` deleted a shipped structural ban. Dropping it
+    instead deleted the supplied pattern, which is the same defect pointed the
+    other way, so a supplied pattern whose regex differs from the deck's is
+    re-keyed under `supplied:<id>` and kept.
     """
     deck = list(cliches["structural_patterns"])
     seen = {str(p.get("id")) for p in deck}
+    deck_regex = {str(p.get("id")): str(p.get("regex")) for p in deck}
     out: list[dict[str, Any]] = list(deck)
     for pattern in banlist.get("structural_patterns", []):
-        if not isinstance(pattern, dict) or str(pattern.get("id")) in seen:
+        if not isinstance(pattern, dict):
             continue
-        seen.add(str(pattern.get("id")))
+        pid = str(pattern.get("id"))
+        if pid in deck_regex:
+            if str(pattern.get("regex")) == deck_regex[pid]:
+                continue
+            pattern = dict(pattern, id=f"supplied:{pid}")
+            pid = str(pattern["id"])
+        if pid in seen:
+            continue
+        seen.add(pid)
         out.append(pattern)
     return out
 
@@ -661,81 +686,100 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
     failures.extend(replay_contract(contract if isinstance(contract, dict) else {}, banlist, cliches, warnings))
 
     # --- the user's own long exclusions ------------------------------------
+    protected = protected_statements(concept, banlist)
     manual = [m for m in banlist.get("manual_checks", []) if isinstance(m, dict)]
-    if manual:
-        # An answer is joined to a check by id, and the id is written by the same
-        # caller that writes both files. Two checks sharing one id were therefore
-        # discharged by one written answer, and the second exclusion the user
-        # asked for was never answered. The join is still by id - that is what
-        # the sidecar records - but a collision on either side is now a failure
-        # rather than a silent merge, so the cheap version of this costs a
-        # rejected contract.
-        ids = [text_of(m.get("id")) for m in manual]
-        repeated = sorted({i for i in ids if ids.count(i) > 1})
-        if repeated:
+    # An answer is joined to a check by id, and the id is written by the same
+    # caller that writes both files. Two checks sharing one id were therefore
+    # discharged by one written answer, and the second exclusion the user
+    # asked for was never answered. The join is still by id - that is what
+    # the sidecar records - but a collision on either side is now a failure
+    # rather than a silent merge, so the cheap version of this costs a
+    # rejected contract.
+    ids = [text_of(m.get("id")) for m in manual]
+    repeated = sorted({i for i in ids if ids.count(i) > 1})
+    if repeated:
+        failures.append(
+            f"the ban list reuses manual check id(s) ({', '.join(repeated)}) - answers are joined to "
+            "checks by id, so two exclusions sharing one id would be discharged by one written answer"
+        )
+    cleared = contract.get("manual_checks_cleared") if isinstance(contract, dict) else None
+    cleared_map: dict[str, str] = {}
+    if isinstance(cleared, list):
+        cleared_ids = [text_of(e.get("id")) for e in cleared if isinstance(e, dict) and text_of(e.get("id"))]
+        repeated_cleared = sorted({i for i in cleared_ids if cleared_ids.count(i) > 1})
+        if repeated_cleared:
             failures.append(
-                f"the ban list reuses manual check id(s) ({', '.join(repeated)}) - answers are joined to "
-                "checks by id, so two exclusions sharing one id would be discharged by one written answer"
+                f"banlist_contract.manual_checks_cleared reuses id(s) ({', '.join(repeated_cleared)}) - "
+                "each exclusion is answered once, in its own note"
             )
-        cleared = contract.get("manual_checks_cleared") if isinstance(contract, dict) else None
-        cleared_map: dict[str, str] = {}
-        if isinstance(cleared, list):
-            cleared_ids = [text_of(e.get("id")) for e in cleared if isinstance(e, dict) and text_of(e.get("id"))]
-            repeated_cleared = sorted({i for i in cleared_ids if cleared_ids.count(i) > 1})
-            if repeated_cleared:
-                failures.append(
-                    f"banlist_contract.manual_checks_cleared reuses id(s) ({', '.join(repeated_cleared)}) - "
-                    "each exclusion is answered once, in its own note"
-                )
-            for entry in cleared:
-                if isinstance(entry, dict) and text_of(entry.get("id")):
-                    cleared_map[text_of(entry.get("id"))] = text_of(entry.get("note"))
-        # A written note is required for the *user's* long exclusions, which is
-        # what SKILL.md, the template and the shipped example all say. It used
-        # to be required for every long entry, model instincts included, and
-        # that was invisible in a product brief and unavoidable outside one: a
-        # product instinct is a three-word noun phrase and becomes a matchable
-        # ban, while a story, ritual or mechanic instinct is naturally a clause
-        # and became a manual check. The shipped product example carries zero
-        # of them; a narrative brief produced twelve, so a user on such a brief
-        # met twelve mandatory notes no document had told them about. The rule
-        # was the thing that disagreed with every instruction, so the rule
-        # changed. The model's long instincts are still carried in the
-        # contract, still replayed, and now listed as a warning to reread the
-        # spec against - what the skeleton check and a reader are for.
-        # Whose exclusion this is comes from the sidecar's own instinct list, not
-        # from the `source` field of the ban list. That field is written by the
-        # caller too, and flipping it from "user" to "model" turned both of the
-        # shipped example's user exclusions from a required answer into a
-        # warning, with no note written and exit 0. A statement that matches no
-        # recorded instinct is treated as the user's: the failure mode of
-        # guessing wrong is an answer the author did not have to write.
-        model_statements = {
-            normalize(v) for v in (contract.get("model_instincts") or [])
-            if isinstance(contract, dict) and isinstance(v, str)
-        }
-        unanswered_model: list[str] = []
-        for m in manual:
-            mid = text_of(m.get("id"))
-            note = cleared_map.get(mid, "")
-            check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
-            if text_units(note) >= mins["manual_check_note"]:
-                continue
-            if normalize(text_of(m.get("statement"))) in model_statements:
-                unanswered_model.append(f"{mid} ({text_of(m.get('statement'))[:50]})")
-                continue
-            failures.append(
-                f"banlist_contract.manual_checks_cleared: exclusion '{mid}' "
-                f"({text_of(m.get('statement'))[:60]}...) has no note saying how the concept avoids it. "
-                "Long exclusions cannot be matched mechanically, so they are answered here or not at all."
-            )
-        if unanswered_model:
-            warnings.append(
-                f"{len(unanswered_model)} of your own long instincts are too long to match literally and "
-                f"carry no written answer ({'; '.join(unanswered_model[:3])}...). Only the user's "
-                "exclusions require one, so this is a reread rather than a failure: check the concept "
-                "against them yourself, because nothing mechanical is checking them"
-            )
+        for entry in cleared:
+            if isinstance(entry, dict) and text_of(entry.get("id")):
+                cleared_map[text_of(entry.get("id"))] = text_of(entry.get("note"))
+    # A written note is required for the *user's* long exclusions, which is
+    # what SKILL.md, the template and the shipped example all say. It used
+    # to be required for every long entry, model instincts included, and
+    # that was invisible in a product brief and unavoidable outside one: a
+    # product instinct is a three-word noun phrase and becomes a matchable
+    # ban, while a story, ritual or mechanic instinct is naturally a clause
+    # and became a manual check. The shipped product example carries zero
+    # of them; a narrative brief produced twelve, so a user on such a brief
+    # met twelve mandatory notes no document had told them about. The rule
+    # was the thing that disagreed with every instruction, so the rule
+    # changed. The model's long instincts are still carried in the
+    # contract, still replayed, and now listed as a warning to reread the
+    # spec against - what the skeleton check and a reader are for.
+    # Whose exclusion this is, and which exclusions there are at all, come
+    # from the recomputed protected set rather than from any single field.
+    # Two versions of this were wrong. Reading `manual_checks[].source` was
+    # wrong because the caller writes it: flipping it to "model" turned both
+    # of the shipped example's user exclusions into warnings, no note
+    # written, exit 0. Reading membership of `banlist_contract`'s
+    # `model_instincts` was wrong for the same reason one commit later:
+    # copying the user's own sentence into that list discharged it, and the
+    # gate printed the id `user-01` while calling it "your own long
+    # instinct". `protected_statements` unions every location in both files
+    # and resolves an owner conflict to the user, so declaring a user
+    # exclusion to be a model instinct adds a claim rather than removing an
+    # obligation. A statement recorded nowhere as the model's is the user's:
+    # the failure mode of guessing wrong is an answer the author did not
+    # have to write.
+    #
+    # The loop is over the protected set, not over `manual_checks`, so
+    # deleting the row does not delete the obligation - the statement is
+    # still in `user_exclusions` in one file or the other.
+    ids_by_statement: dict[str, list[str]] = {}
+    for m in manual:
+        ids_by_statement.setdefault(normalize(text_of(m.get("statement"))), []).append(text_of(m.get("id")))
+    for e in banlist.get("entries", []):
+        if isinstance(e, dict):
+            ids_by_statement.setdefault(normalize(text_of(e.get("phrase"))), []).append(text_of(e.get("id")))
+    for mid, note in cleared_map.items():
+        check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
+    unanswered_model: list[str] = []
+    for key in sorted(protected):
+        statement, owner = protected[key]
+        if is_matchable_phrase(statement):
+            continue  # short enough to be a ban; the lint matches it literally
+        candidates = ids_by_statement.get(key, [])
+        answered = any(text_units(cleared_map.get(i, "")) >= mins["manual_check_note"] for i in candidates)
+        if answered:
+            continue
+        label = candidates[0] if candidates else "(no id in the ban list)"
+        if owner == "model":
+            unanswered_model.append(f"{label} ({statement[:50]})")
+            continue
+        failures.append(
+            f"banlist_contract.manual_checks_cleared: exclusion '{label}' "
+            f"({statement[:60]}...) has no note saying how the concept avoids it. "
+            "Long exclusions cannot be matched mechanically, so they are answered here or not at all."
+        )
+    if unanswered_model:
+        warnings.append(
+            f"{len(unanswered_model)} of your own long instincts are too long to match literally and "
+            f"carry no written answer ({'; '.join(unanswered_model[:3])}...). Only the user's "
+            "exclusions require one, so this is a reread rather than a failure: check the concept "
+            "against them yourself, because nothing mechanical is checking them"
+        )
 
     markers = schema["placeholder_markers"]
     for path, value in walk_strings(concept):
@@ -933,11 +977,46 @@ def main(argv: list[str] | None = None) -> int:
         result["failures"].extend(check_mentions(mentions, entries, patterns))
         known_ids = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
         result["failures"].extend(mention_bound_failures(mentions, known_ids))
+        result["failures"].extend(mention_placement_failures(markdown))
         result["warnings"].extend(describe_mentions(mentions))
-        blob = "\n".join(
-            v for path, v in walk_strings(concept) if not path.startswith("banlist_contract")
-        ) + "\n" + strip_mention_markers(lintable_markdown(markdown))
-        findings = lint_text(blob, entries, patterns, set(), mentions)
+
+        # `banlist_contract` holds the burnt phrases themselves, so it is not
+        # linted - but as an exact path, not as a prefix. `startswith` meant a
+        # sidecar key called `banlist_contract_notes` was never linted while the
+        # same text under any other key failed.
+        sidecar = "\n".join(
+            v for path, v in walk_strings(concept)
+            if not (path == "banlist_contract" or path.startswith(("banlist_contract.", "banlist_contract[")))
+        )
+        body = lintable_markdown(markdown)
+        findings = lint_text(sidecar, entries, patterns)
+        findings.extend(lint_document(body, entries, patterns, sidecar.count("\n") + 1))
+
+        # --- the protected set, enforced outside the supplied structure ------
+        # This pass does not read `entries`, `structural_patterns`, `allowed`,
+        # any tier or any id from the ban list, and honours no release of any
+        # kind. It lints the same text against phrases recomputed from content
+        # by `protected_statements`, so an id collision, a retier, a move
+        # between fields or files, a duplicate or a deleted row changes nothing
+        # about whether a burnt instinct or one of the user's own exclusions
+        # fires. What it does not establish is in the note above
+        # `protected_statements`: the gate has no copy of those statements that
+        # the judged party did not write, so deleting one from every location in
+        # both files still removes it.
+        protected = protected_lint_entries(protected_statements(concept, banlist))
+        protected_findings = lint_text(
+            sidecar + "\n" + strip_mention_markers(body), protected, [])
+        if protected_findings:
+            result["failures"].append(
+                f"{len(protected_findings)} burnt instinct(s) or user exclusion(s) are used in the spec: "
+                + ", ".join(sorted({f["match"] for f in protected_findings}))
+                + " - these are the subtraction the session is built on and nothing in the ban list, the "
+                "sidecar or the markdown releases them"
+            )
+            already = {(f["line"], normalize(f["match"])) for f in findings}
+            findings.extend(f for f in protected_findings
+                            if (f["line"], normalize(f["match"])) not in already)
+
         banned = [f for f in findings if f["tier"] == "ban"]
         if banned:
             result["failures"].append(

@@ -186,3 +186,51 @@ def test_every_shipped_example_banlist_structural_pattern_clears_the_check(refer
         for pattern in payload.get("structural_patterns", []):
             reason = catastrophic_shape(pattern["regex"])
             assert reason is None, f"{name} pattern {pattern['id']!r} was refused: {reason}"
+
+
+# --- the length bound must not become a silent drop -------------------------
+#
+# The first version of the bound truncated each line to 4000 characters and
+# discarded the rest, so every structural ban simply stopped firing past that
+# point on a long paragraph: no message, no warning, exit 0. That is precisely
+# what the docstring at the top of this file, and SKILL.md, said would be worse
+# than the hang the bound replaced. The line is now scanned in overlapping
+# windows and nothing is dropped.
+
+
+def test_a_structural_ban_fires_past_the_window_boundary(decks):
+    from engine import PATTERN_WINDOW_CHARS, lint_text
+
+    pattern = next(p for p in decks["cliches"]["structural_patterns"] if p["id"] == "cross-between")
+    hit = "a cross between a ledger and a lantern"
+    for offset in (0, PATTERN_WINDOW_CHARS + 100, PATTERN_WINDOW_CHARS * 3):
+        line = ("padding " * (offset // 8)) + hit
+        findings = lint_text(line, [], [pattern])
+        assert [f["id"] for f in findings] == ["cross-between"], (
+            f"the ban stopped firing at offset {offset} of one line: {findings}")
+
+
+def test_a_match_is_reported_once_when_the_windows_overlap(decks):
+    from engine import PATTERN_WINDOW_CHARS, PATTERN_WINDOW_OVERLAP, _finditer_bounded
+    import re as _re
+
+    boundary = PATTERN_WINDOW_CHARS - PATTERN_WINDOW_OVERLAP // 2
+    line = ("x" * boundary) + "cross between" + ("y" * PATTERN_WINDOW_CHARS)
+    matches = _finditer_bounded(_re.compile(r"cross between"), line, "cross-between")
+    assert [(m.start(), m.group(0)) for m in matches] == [(boundary, "cross between")]
+
+
+@pytest.mark.skipif(not hasattr(__import__("signal"), "setitimer"),
+                    reason="the wall-clock backstop needs SIGALRM/setitimer, which Windows does not have")
+def test_running_out_of_budget_on_a_long_line_refuses_rather_than_truncates():
+    """The budget is per line, across its windows. Exhausting it names the
+    pattern and fails the run; it never returns the findings from the windows it
+    managed and drops the rest."""
+    from engine import EngineError, PATTERN_WINDOW_CHARS, _finditer_bounded
+    import re as _re
+
+    line = "ab" * PATTERN_WINDOW_CHARS
+    with pytest.raises(EngineError) as exc:
+        _finditer_bounded(_re.compile(r"(a|ab)+c$"), line, "slow", budget=0.05)
+    assert "slow" in str(exc.value)
+    assert "refused" in str(exc.value)
