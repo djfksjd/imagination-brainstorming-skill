@@ -33,20 +33,22 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
-        text_units,
+        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
+        distinct_ratio, jaccard, load_banlist, load_deck, lint_text, normalize, read_json_arg,
+        require_mapping, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
+    from banlist import classify as classify_exclusions  # type: ignore
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
-        text_units,
+        VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
+        distinct_ratio, jaccard, load_banlist, load_deck, lint_text, normalize, read_json_arg,
+        require_mapping, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
+    from banlist import classify as classify_exclusions  # type: ignore
 
 GATE_FAIL = 2
 MIN_QUESTION_TOKENS = 6
@@ -146,8 +148,119 @@ def check_padding(label: str, value: str, threshold: float, failures: list[str])
         failures.append(f"{label}: repeated filler rather than content ({distinct_ratio(value):.2f} distinct)")
 
 
+def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
+                    cliches: dict[str, Any]) -> list[str]:
+    """Rebuild the ban contract from what the sidecar declares and require the
+    supplied file to contain it.
+
+    A gate that reads whatever file is handed to it under `--banlist` is not
+    gating stage 2 at all: a one-entry list written by the caller turned a
+    76-phrase lint into a one-phrase lint and, because the user's long
+    exclusions live in `manual_checks`, silently discharged every check the
+    user personally asked for. So the contract is replayed the way the draw is
+    replayed next door: the instincts and exclusions the sidecar claims are
+    reclassified here, with the same rules `banlist.py` used, and every
+    resulting ban and manual check must be present in the file. The bundled
+    cliche deck must be present too, minus only the ids the contract itself
+    released while it was being built.
+
+    Containment rather than equality, deliberately: a later contract may add
+    bans (`--extra`, a second round of exclusions) and adding bans cannot
+    weaken a verdict. Removing them can, and that is what this refuses.
+    """
+    failures: list[str] = []
+
+    instincts = [v for v in (contract.get("model_instincts") or []) if isinstance(v, str) and v.strip()]
+    exclusions = [v for v in (contract.get("user_exclusions") or []) if isinstance(v, str) and v.strip()]
+
+    supplied_entries = [e for e in banlist.get("entries", []) if isinstance(e, dict)]
+    supplied_phrases = {normalize(e.get("phrase", "")) for e in supplied_entries}
+    supplied_ids = {e.get("id") for e in supplied_entries}
+    supplied_manual = {
+        normalize(m.get("statement", "")) for m in banlist.get("manual_checks", []) if isinstance(m, dict)
+    }
+
+    expected_entries: list[dict[str, Any]] = []
+    expected_manual: list[dict[str, str]] = []
+    classify_exclusions(instincts, "instinct", "first-instinct", "model", expected_entries, expected_manual)
+    classify_exclusions(exclusions, "user", "user-exclusion", "user", expected_entries, expected_manual)
+
+    missing_bans = [e["phrase"] for e in expected_entries if normalize(e["phrase"]) not in supplied_phrases]
+    if missing_bans:
+        failures.append(
+            f"the ban list is missing {len(missing_bans)} phrase(s) the sidecar says were burned "
+            f"({', '.join(missing_bans[:3])}...) - this is not the contract this session built, and a "
+            "substituted contract lints against a shorter list than the user signed"
+        )
+    missing_manual = [m["statement"] for m in expected_manual if normalize(m["statement"]) not in supplied_manual]
+    if missing_manual:
+        failures.append(
+            f"the ban list is missing {len(missing_manual)} of the user's long exclusions "
+            f"({missing_manual[0][:60]}...) - dropping them from the file is how every manual check "
+            "gets discharged without being answered"
+        )
+
+    # The releases are made once, while the contract is being built, and can
+    # only ever release something the bundled deck put there. An instinct or a
+    # user exclusion is not releasable at all: it is checked above by phrase.
+    deck = deck_lint_entries(cliches)
+    known_ids = {e["id"] for e in deck}
+    allowed = banlist.get("allowed", [])
+    if not isinstance(allowed, list) or any(not isinstance(i, str) for i in allowed):
+        failures.append("the ban list's 'allowed' field must be a list of cliche ids")
+        allowed = []
+    unknown = sorted(set(allowed) - known_ids)
+    if unknown:
+        failures.append(
+            f"the ban list releases id(s) that are not in the cliche deck: {', '.join(unknown)}"
+        )
+    missing_deck = [e["id"] for e in deck if e["id"] not in supplied_ids and e["id"] not in set(allowed)]
+    if missing_deck:
+        failures.append(
+            f"the ban list is missing {len(missing_deck)} entries of the bundled cliche deck "
+            f"({', '.join(missing_deck[:3])}...) - rebuild it with banlist.py rather than by hand"
+        )
+    return failures
+
+
+def lint_entries(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[str, Any]]:
+    """What the spec is linted against: the contract, plus the bundled deck.
+
+    The deck is re-added whatever contract was passed, so that the worst a
+    substituted or hand-trimmed file can do is fail the replay above - it can
+    never quietly shrink the lint to the phrases its author chose to include.
+    """
+    allowed = {i for i in banlist.get("allowed", []) if isinstance(i, str)}
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for entry in list(banlist.get("entries", [])) + deck_lint_entries(cliches):
+        if not isinstance(entry, dict):
+            continue
+        key = f"{entry.get('id')}\x1f{normalize(str(entry.get('phrase', '')))}"
+        if key in seen or entry.get("id") in allowed:
+            continue
+        seen.add(key)
+        out.append(entry)
+    return out
+
+
+def lint_patterns(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[str, Any]]:
+    """The structural patterns, likewise re-added from the deck."""
+    allowed = {i for i in banlist.get("allowed", []) if isinstance(i, str)}
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for pattern in list(banlist.get("structural_patterns", [])) + list(cliches["structural_patterns"]):
+        if not isinstance(pattern, dict) or pattern.get("id") in allowed:
+            continue
+        if pattern.get("id") in seen:
+            continue
+        seen.add(str(pattern.get("id")))
+        out.append(pattern)
+    return out
+
+
 def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[str, Any],
-                  banlist: dict[str, Any]) -> dict[str, Any]:
+                  banlist: dict[str, Any], cliches: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     warnings: list[str] = []
     counts = schema["counts"]
@@ -388,21 +501,30 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             "the supplied ban list is unconfirmed - present it to the user as exclusions and rerun "
             "banlist.py with --confirmed; a sidecar claiming consent proves nothing on its own"
         )
+    # An absent field on either side used to skip these comparisons rather than
+    # fail them, which made a stripped-down file safer to pass than an honest
+    # one from another session.
     contract_skeleton = text_of(contract.get("skeleton")) if isinstance(contract, dict) else ""
     banlist_skeleton = text_of(banlist.get("skeleton"))
-    if contract_skeleton and banlist_skeleton and normalize(contract_skeleton) != normalize(banlist_skeleton):
+    if not banlist_skeleton:
+        failures.append(
+            "the ban list names no skeleton - a contract without one cannot be the contract this "
+            "session built, and the skeleton is the thing the concept must not restate"
+        )
+    elif contract_skeleton and normalize(contract_skeleton) != normalize(banlist_skeleton):
         failures.append(
             "the skeleton in concept.json and the one in the ban list differ - the gate would be checking "
             "one contract and linting another"
         )
     sidecar_instincts = {normalize(v) for v in (contract.get("model_instincts") or []) if isinstance(v, str)}
     banlist_instincts = {normalize(v) for v in banlist.get("model_instincts", []) if isinstance(v, str)}
-    if sidecar_instincts and banlist_instincts and not sidecar_instincts <= banlist_instincts:
+    if sidecar_instincts and not sidecar_instincts <= banlist_instincts:
         missing = sorted(sidecar_instincts - banlist_instincts)[:3]
         failures.append(
             f"instincts in concept.json are absent from the ban list ({', '.join(missing)}...) - "
             "the two were built from different sessions"
         )
+    failures.extend(replay_contract(contract if isinstance(contract, dict) else {}, banlist, cliches))
 
     # --- the user's own long exclusions ------------------------------------
     manual = [m for m in banlist.get("manual_checks", []) if isinstance(m, dict)]
@@ -569,19 +691,20 @@ def main(argv: list[str] | None = None) -> int:
         concept = require_mapping(read_json_arg(args.concept), "concept")
         banlist = load_banlist(args.banlist)
         frames = load_deck("frames")
+        cliches = load_deck("cliches")
         try:
             markdown = Path(args.markdown).read_text(encoding="utf-8")
         except OSError as exc:
             raise EngineError(f"cannot read {args.markdown}: {exc}") from exc
 
-        result = check_concept(concept, schema, frames, banlist)
+        result = check_concept(concept, schema, frames, banlist, cliches)
         result["failures"].extend(check_markdown(markdown, schema, concept))
 
         blob = "\n".join(
             v for path, v in walk_strings(concept) if not path.startswith("banlist_contract")
         ) + "\n" + lintable_markdown(markdown)
         findings = lint_text(
-            blob, banlist.get("entries", []), banlist.get("structural_patterns", []),
+            blob, lint_entries(banlist, cliches), lint_patterns(banlist, cliches),
             set(),
         )
         banned = [f for f in findings if f["tier"] == "ban"]
