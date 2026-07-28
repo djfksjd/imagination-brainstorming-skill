@@ -57,12 +57,13 @@ def example(references: Path) -> dict:
 
 @pytest.fixture
 def run():
-    def _run(script: str, *args: str, stdin: str | None = None) -> Result:
+    def _run(script: str, *args: str, stdin: str | None = None, timeout: float | None = None) -> Result:
         proc = subprocess.run(
             [sys.executable, str(SCRIPTS / script), *args],
             input=stdin,
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
         return Result(proc)
 

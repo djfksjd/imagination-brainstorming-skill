@@ -363,6 +363,26 @@ present at ban tier as well as present: `warn` never fails and `manual` is not
 matched at all, so re-tiering one removed it from the verdict while leaving it
 in the file.
 
+A `structural_patterns[].regex` in a hand-edited ban list is the same kind of
+artefact and had the same kind of hole, just aimed at a different outcome: not
+at making the verdict pass, but at making it never arrive. `(a+)+b$` against
+forty `a` characters makes Python's own backtracking matcher explore
+exponentially many ways to split that run, and every script that lints text
+against a ban list used to simply hang - a verdict that never comes back is,
+to whatever is waiting on it, indistinguishable from "did not fail". Such a
+pattern is now refused at load time, before it is ever run, naming its id in
+the error. The check walks the pattern text for the classic nested-repetition
+shape (`(x+)+`, `(x*)*`, and relatives) and is a narrowing, not an elimination:
+it is deterministic and catches the common case, including this one, but a
+catastrophic pattern it does not recognise - overlapping alternation, for
+instance - is not caught by it. On macOS and Linux a second, wall-clock
+backstop also refuses rather than hangs on whatever the structural check
+missed; that backstop needs `SIGALRM`/`setitimer` and is unavailable on
+Windows, where the structural check is the only defence. Either way the
+refusal names the pattern id and is never a silent drop of the rule - a ban
+the user believed was active but that quietly stopped firing would be worse
+than the hang it replaces.
+
 Whether a long exclusion is the user's is read from the sidecar's own instinct
 list, not from the `source` field of the ban list - that field is written by
 the same caller, and setting it to `model` turned every one of the user's

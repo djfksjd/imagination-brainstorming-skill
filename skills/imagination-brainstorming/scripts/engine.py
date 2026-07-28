@@ -20,6 +20,11 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
+try:
+    import signal as _signal
+except ImportError:  # pragma: no cover - signal is stdlib everywhere CPython runs
+    _signal = None  # type: ignore[assignment]
+
 VERSION = "0.3.0"
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -672,6 +677,226 @@ def _is_released(spans: list[tuple[int, int, set[str]]], start: int, end: int, r
     return any(s <= start and end <= t and rule_id in ids for s, t, ids in spans)
 
 
+# --- structural_patterns[].regex is an artefact the judged party supplies -----
+#
+# `structural_patterns` comes from the shipped deck, but a ban list built by
+# banlist.py (or hand-edited) can add its own entries, and the phrase in this
+# PR's history has been the same one twice already: an artefact the gate reads
+# but does not write can be shaped to make the verdict come out however its
+# author wants. Here the shape isn't "always pass" - it is "never answer".
+# `(a+)+b$` against forty `a` characters makes Python's backtracking matcher
+# explore an exponential number of ways to split the same run of `a`s between
+# the inner and outer `+`, and `spec_gate.py` (and everything that shares this
+# `lint_text`) simply never returns. A verdict that never arrives is
+# indistinguishable, to whatever is waiting on it, from "did not fail" - which
+# is exactly the failure mode the ban contract exists to prevent for every
+# other kind of artefact substitution.
+#
+# Two defences, chosen deliberately rather than either alone:
+#
+# 1. `_rejects_nested_repetition` is a structural check: it walks the pattern
+#    text (not Python's private regex AST, just characters, so it needs no
+#    internals and works identically on every platform and every machine) and
+#    refuses a pattern where a quantified atom sits directly inside another
+#    quantifier - the `(x+)+`, `(x*)*`, `(x+)*` family, which is the
+#    overwhelmingly common shape of an accidentally-catastrophic pattern and
+#    exactly what the reproduction above is. It is deterministic: the same
+#    pattern is refused or accepted the same way on a fast machine and a slow
+#    one, which matters here because a gate whose verdict depends on machine
+#    speed is not a gate. It is also NOT a general ReDoS detector - alternation
+#    with overlapping branches (`(a|a)+`), catastrophic backreference use, and
+#    other shapes it does not recognise can still time out. That narrower
+#    claim is deliberate; nothing here claims to eliminate the whole class.
+# 2. `_finditer_bounded` is a wall-clock backstop, `signal`-based, so it is
+#    POSIX-only: it needs `SIGALRM`/`setitimer`, which macOS and Linux both
+#    have and Windows does not. Where it is unavailable it is skipped
+#    silently at import time (`_signal` stays usable, the check is just
+#    `hasattr`-gated per call) and only defence 1 remains, so on a
+#    non-POSIX host a pattern shape that defence 1 does not recognise can
+#    still hang the gate. That is a real gap, stated plainly rather than
+#    assumed away, and it is why defence 1 is the one that also runs on
+#    Windows and is not allowed to be the "backup" of the two.
+#
+# Either defence alone was rejected: the structural check alone still lets an
+# unrecognised shape hang forever; a timer alone makes "did the gate pass"
+# depend on how fast the box was, which is the same non-determinism this
+# repo's contract-substitution fixes have been closing everywhere else.
+PATTERN_TIME_BUDGET_SECONDS = 2.0
+PATTERN_TEXT_CAP = 4000  # chars of one line handed to a structural pattern
+
+
+class _PatternTimeout(Exception):
+    """Raised from the SIGALRM handler; never escapes `_finditer_bounded`."""
+
+
+def _quantifier_span(src: str, i: int) -> tuple[bool, int]:
+    """If a quantifier starts at src[i], return (is_unbounded, index_after_it).
+
+    `{m,n}` counts as unbounded here once the range spans 10+ repeats, since a
+    "bounded" range that wide still multiplies badly when nested; `{m}` (an
+    exact count) and `?` never do.
+    """
+    n = len(src)
+    if i >= n:
+        return False, i
+    c = src[i]
+    if c in "*+":
+        j = i + 1
+        if j < n and src[j] in "?+":
+            j += 1
+        return True, j
+    if c == "?":
+        j = i + 1
+        if j < n and src[j] in "?+":
+            j += 1
+        return False, j
+    if c == "{":
+        close = src.find("}", i)
+        if close == -1:
+            return False, i
+        body = src[i + 1:close]
+        end = close + 1
+        if end < n and src[end] in "?+":
+            end += 1
+        if not body or not all(ch.isdigit() or ch == "," for ch in body):
+            return False, end
+        if "," in body:
+            lower, _, upper = body.partition(",")
+            if upper.strip() == "":
+                return True, end
+            lo = int(lower) if lower.strip() else 0
+            hi = int(upper)
+            if hi - lo >= 10:
+                return True, end
+            return False, end
+        return False, end
+    return False, i
+
+
+def _skip_group_prefix(src: str, j: int) -> int:
+    """Advance past a group's `(?...` marker so scanning resumes at its content."""
+    if src[j:j + 2] == "?:":
+        return j + 2
+    if src[j:j + 1] == "?" and src[j + 1:j + 2] in "=!":
+        return j + 2
+    if src[j:j + 3] in ("?<=", "?<!"):
+        return j + 3
+    if src[j:j + 3] == "?P<" or src[j:j + 2] == "?<":
+        close = src.find(">", j)
+        return close + 1 if close != -1 else j
+    return j
+
+
+def _scan_group(src: str, i: int) -> tuple[bool, bool, int]:
+    """Scan one group's content (or the whole pattern at top level).
+
+    Returns (danger_found, has_unbounded_atom_here, index_of_closing_paren_or_end).
+    `danger_found` means a quantified atom was seen directly inside another
+    unbounded quantifier somewhere in this content, at any depth.
+    `has_unbounded_atom_here` means this level itself contains an atom (or a
+    child group) carrying an unbounded quantifier - the flag the *caller*
+    needs to know, because if the caller's own group is then also quantified
+    unboundedly, that combination is the nested-repetition shape.
+    """
+    n = len(src)
+    danger = False
+    has_unbounded_here = False
+    while i < n and src[i] != ")":
+        c = src[i]
+        if c == "\\":
+            i += 2
+        elif c == "[":
+            j = i + 1
+            if j < n and src[j] == "^":
+                j += 1
+            if j < n and src[j] == "]":
+                j += 1
+            while j < n and src[j] != "]":
+                if src[j] == "\\":
+                    j += 1
+                j += 1
+            i = j + 1
+        elif c == "(":
+            j = _skip_group_prefix(src, i + 1)
+            child_danger, child_has_unbounded, after = _scan_group(src, j)
+            i = after + 1 if after < n and src[after] == ")" else after
+            is_unbounded, j2 = _quantifier_span(src, i)
+            if child_danger:
+                danger = True
+            if is_unbounded and child_has_unbounded:
+                danger = True
+            if is_unbounded or child_has_unbounded:
+                has_unbounded_here = True
+            i = j2
+            continue
+        elif c == "|":
+            i += 1
+            continue
+        else:
+            i += 1
+        is_unbounded, j2 = _quantifier_span(src, i)
+        if is_unbounded:
+            has_unbounded_here = True
+        i = j2
+    return danger, has_unbounded_here, i
+
+
+def catastrophic_shape(regex_src: str) -> str | None:
+    """Return a reason string if `regex_src` has the classic nested-quantifier
+    ReDoS shape (`(x+)+`, `(x*)*`, `(x+)*`, ...), else None.
+
+    This is a narrowing, not the elimination of a whole bug class: it catches
+    the shape that is both the overwhelmingly common cause of an
+    accidentally-catastrophic pattern and the one reproduced against this
+    ban list, not every input on which Python's backtracking engine can be
+    made to blow up (overlapping alternation is one shape it does not
+    recognise).
+    """
+    try:
+        danger, _, _ = _scan_group(regex_src, 0)
+    except Exception:  # pragma: no cover - malformed input falls through to re.compile's own error
+        return None
+    if danger:
+        return "nested unbounded repetition (e.g. `(x+)+`) can force exponential backtracking"
+    return None
+
+
+def _finditer_bounded(rx: re.Pattern[str], text: str, pattern_id: str,
+                       budget: float = PATTERN_TIME_BUDGET_SECONDS) -> list[re.Match[str]]:
+    """Run `rx` over `text`, refusing rather than hanging if it runs long.
+
+    `text` is capped to `PATTERN_TEXT_CAP` characters first: bounding the
+    input bounds the worst case for shapes that are slow but not exponential,
+    independently of the timer below.
+
+    The timer itself needs `SIGALRM`/`setitimer`, which is POSIX (macOS and
+    Linux have it; Windows does not). Where it is unavailable this silently
+    runs unbounded except for the length cap and the structural check already
+    applied to the pattern before it reached here - see the note above
+    `PATTERN_TIME_BUDGET_SECONDS`.
+    """
+    bounded_text = text[:PATTERN_TEXT_CAP]
+    has_alarm = _signal is not None and hasattr(_signal, "SIGALRM") and hasattr(_signal, "setitimer")
+    if not has_alarm:
+        return list(rx.finditer(bounded_text))
+
+    def _on_alarm(signum: int, frame: Any) -> None:
+        raise _PatternTimeout()
+
+    previous_handler = _signal.signal(_signal.SIGALRM, _on_alarm)
+    _signal.setitimer(_signal.ITIMER_REAL, budget)
+    try:
+        return list(rx.finditer(bounded_text))
+    except _PatternTimeout:
+        raise EngineError(
+            f"pattern {pattern_id} did not finish matching within {budget}s and was refused "
+            "rather than left to hang - rewrite it to avoid nested repetition (e.g. `(x+)+`)"
+        ) from None
+    finally:
+        _signal.setitimer(_signal.ITIMER_REAL, 0)
+        _signal.signal(_signal.SIGALRM, previous_handler)
+
+
 def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str, Any]],
               allow: set[str] | None = None,
               mentions: list[tuple[str, set[str]]] | None = None) -> list[dict[str, Any]]:
@@ -709,6 +934,9 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
     for p in patterns:
         if p["id"] in allow:
             continue
+        reason = catastrophic_shape(p["regex"])
+        if reason is not None:
+            raise EngineError(f"pattern {p['id']} was refused, not compiled: {reason}")
         try:
             compiled_patterns.append((p, re.compile(p["regex"], re.IGNORECASE)))
         except re.error as exc:
@@ -731,7 +959,7 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
                 })
                 break
         for p, rx in compiled_patterns:
-            for m in rx.finditer(line):
+            for m in _finditer_bounded(rx, line, p["id"]):
                 if _is_released(raw_spans, m.start(), m.end(), p["id"]):
                     continue
                 findings.append({

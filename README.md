@@ -202,6 +202,8 @@ Swapping the contract is not free, though it is not impossible either — nothin
 > All three occurred during this skill's own trial run and all three were caught by a person, not a script. So: before the spec reaches you, have a second reader attack it — another model, a colleague — and ask them to argue that **it loses**, not that it could be improved. "How would you make this better" gets you polish. "Why does this lose" gets you the inverted premise.
 >
 > The skill also runs a **direction-of-evidence audit** on itself: for every load-bearing *because*, it has to write down the opposite conclusion the same premise would support, and name what the deciding party can actually observe. That is the check that catches *"the judge is a machine, therefore our internal record is the differentiator"* — a machine judge cannot observe the internal record, so the premise argues for the opposite.
+>
+> A hand-edited ban list can add its own `structural_patterns[].regex`, and a pattern shaped like `(a+)+` makes Python's own matcher take exponentially long on some inputs — a gate that never returns is, to whatever is waiting on it, the same as a gate that passed. Such a pattern is now refused by id before it ever runs. The check is a deterministic scan for the classic nested-repetition shape, so it narrows this risk rather than eliminating it — an unrecognised catastrophic shape can still be slow — and on macOS and Linux a wall-clock backstop catches what the scan misses; that backstop is unavailable on Windows.
 
 ### Briefs that are not products
 

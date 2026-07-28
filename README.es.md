@@ -202,6 +202,8 @@ Sustituir el contrato no sale gratis, aunque tampoco es imposible: aquí nada es
 > Las tres ocurrieron durante la propia sesión de prueba de esta habilidad y las tres las cazó una persona, no un script. Así que: antes de que la especificación llegue a ti, haz que un segundo lector la ataque — otro modelo, un colega — y pídele que argumente que **pierde**, no que podría mejorarse. "Cómo lo harías mejor" te trae pulido. "Por qué pierde esto" te trae la premisa invertida.
 >
 > La habilidad también se aplica a sí misma una **auditoría de dirección de la evidencia**: para cada *porque* que sostiene algo, tiene que escribir la conclusión opuesta que la misma premisa sostendría, y nombrar qué puede observar realmente quien decide. Ese es el paso que caza *"el evaluador es una máquina, por tanto nuestro registro interno es el diferenciador"* — una máquina no puede observar el registro interno, así que esa premisa argumenta lo contrario.
+>
+> Una lista de exclusión editada a mano puede añadir su propio `structural_patterns[].regex`, y un patrón con la forma `(a+)+` hace que el propio motor de coincidencias de Python tarde un tiempo exponencial con ciertas entradas — una verja que nunca responde es, para quien la espera, indistinguible de una verja que dejó pasar. Un patrón así ahora se rechaza por su id antes de llegar a ejecutarse. La comprobación es un barrido determinista que detecta la forma clásica de repetición anidada, así que reduce este riesgo sin eliminarlo — una forma catastrófica que no reconoce puede seguir siendo lenta — y en macOS y Linux hay además un segundo respaldo, basado en el reloj, que atrapa lo que el barrido pasa por alto; ese respaldo no está disponible en Windows.
 
 ### Encargos que no son productos
 

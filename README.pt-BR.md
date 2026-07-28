@@ -202,6 +202,8 @@ Trocar o contrato não sai de graça — mas também não é impossível: nada a
 > As três aconteceram durante a própria sessão de teste desta habilidade e as três foram pegas por uma pessoa, não por um script. Então: antes que a especificação chegue até você, peça a um segundo leitor que a ataque — outro modelo, um colega — e que argumente que **ela perde**, não que poderia melhorar. "Como deixar isso melhor" traz polimento. "Por que isso perde" traz a premissa invertida.
 >
 > A habilidade também roda em si mesma uma **auditoria da direção da evidência**: para cada *porque* que sustenta algo, ela precisa escrever a conclusão oposta que a mesma premissa sustentaria, e nomear o que a parte que decide consegue de fato observar. É esse passo que pega *"o avaliador é uma máquina, portanto nosso registro interno é o diferencial"* — uma máquina não consegue observar o registro interno, então essa premissa argumenta pelo contrário.
+>
+> Uma lista de banimento editada manualmente pode acrescentar seu próprio `structural_patterns[].regex`, e um padrão no formato `(a+)+` faz o próprio mecanismo de correspondência do Python levar um tempo exponencial em certas entradas — um portão que nunca responde é, para quem espera por ele, indistinguível de um portão que passou. Esse tipo de padrão agora é recusado pelo id antes mesmo de rodar. A checagem é uma varredura determinística que procura a forma clássica de repetição aninhada, então ela reduz esse risco em vez de eliminá-lo — uma forma catastrófica que ela não reconhece ainda pode ser lenta — e no macOS e no Linux há também uma segunda rede de segurança, baseada em tempo real, que pega o que a varredura deixa passar; essa rede não está disponível no Windows.
 
 ### Briefings que não são produtos
 
