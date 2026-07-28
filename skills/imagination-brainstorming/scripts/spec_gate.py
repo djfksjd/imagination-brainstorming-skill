@@ -34,6 +34,7 @@ try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
         load_banlist, load_deck, lint_text, normalize, passage_coverage, read_json_arg, require_mapping,
+        text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
 except ImportError:
@@ -42,6 +43,7 @@ except ImportError:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
         load_banlist, load_deck, lint_text, normalize, passage_coverage, read_json_arg, require_mapping,
+        text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
 
@@ -143,7 +145,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
     failures: list[str] = []
     warnings: list[str] = []
     counts = schema["counts"]
-    mins = schema["min_chars"]
+    mins = schema["min_units"]
     thresholds = schema["thresholds"]
 
     brief = text_of(concept.get("brief"))
@@ -187,7 +189,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 f"no premise was deleted or inverted - a session that kept every premise refined the brief "
                 "instead of testing it"
             )
-        elif broken < counts["premises_broken_without_note"] and len(text_of(concept.get("premises_note"))) < mins["premises_note"]:
+        elif broken < counts["premises_broken_without_note"] and text_units(text_of(concept.get("premises_note"))) < mins["premises_note"]:
             # Honest sessions do sometimes overturn only one premise. That is
             # allowed, but it has to be argued rather than passed over - and
             # inventing a second inversion to hit a quota is worse than saying
@@ -262,7 +264,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             failures.append(f"chosen.approach_id '{chosen.get('approach_id')}' does not match the approach marked chosen")
         for field, key in (("why", "chosen_why"), ("forbids", "forbids"), ("impossible_now", "impossible_now")):
             value = text_of(chosen.get(field))
-            if len(value) < mins[key]:
+            if text_units(value) < mins[key]:
                 hint = {
                     "why": ", argued against the alternatives",
                     "forbids": " - a design that forbids nothing is a wish list",
@@ -328,7 +330,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         seen_q: set[str] = set()
         for i, q in enumerate(questions):
             value = text_of(q)
-            if len(value) < mins["open_question"]:
+            if text_units(value) < mins["open_question"]:
                 failures.append(f"open_questions[{i}]: too short to be a real question")
                 continue
             if not any(mark in value for mark in marks):
@@ -359,7 +361,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 failures.append(f"decisions[{i}]: repeats an earlier decision")
             else:
                 seen_d.add(normalize(statement))
-            if len(text_of(d.get("why"))) < mins["decision_why"]:
+            if text_units(text_of(d.get("why"))) < mins["decision_why"]:
                 failures.append(f"decisions[{i}].why: needs at least {mins['decision_why']} chars")
             check_padding(f"decisions[{i}].why", text_of(d.get("why")), thresholds["min_distinct_ratio"], failures)
 
@@ -370,7 +372,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         target = text_of(handoff.get("next"))
         if target not in schema["handoff_targets"]:
             failures.append(f"handoff.next: must be one of {', '.join(schema['handoff_targets'])}")
-        if len(text_of(handoff.get("why"))) < mins["handoff_why"]:
+        if text_units(text_of(handoff.get("why"))) < mins["handoff_why"]:
             failures.append(f"handoff.why: needs at least {mins['handoff_why']} chars")
         check_padding("handoff.why", text_of(handoff.get("why")), thresholds["min_distinct_ratio"], failures)
 
@@ -448,14 +450,14 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
                 f"template puts it (expected {' → '.join(expected)}, got {' → '.join(ordered)})"
             )
 
-    minimum = schema["min_chars"]["section_body"]
+    minimum = schema["min_units"]["section_body"]
     for name, body in found:
         if name not in required:
             continue
         shown = visible_text(body).strip()
-        if len(shown) < minimum:
+        if text_units(shown) < minimum:
             failures.append(
-                f"markdown: section '{name}' has {len(shown)} chars a reader can see, needs {minimum} "
+                f"markdown: section '{name}' has {text_units(shown)} units a reader can see, needs {minimum} "
                 "(HTML comments and fenced blocks do not count)"
             )
         elif distinct_ratio(shown) < schema["thresholds"]["min_distinct_ratio"]:
@@ -464,20 +466,27 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
     # The document must actually contain the concept it is the spec for.
     # Requiring the file to exist proved nothing while any ten paragraphs
     # carrying the right markers would pass.
-    shown_all = visible_text(markdown)
+    # Each field is looked for in the section that is supposed to carry it, not
+    # anywhere in the file. Searching the whole document lets a refusal quoted in
+    # the ban list, or an alternative recorded in the decision log as rejected,
+    # satisfy a binding for a section that never mentions it.
+    bodies = {name: visible_text(body) for name, body in found}
     chosen = concept.get("chosen") if isinstance(concept.get("chosen"), dict) else {}
     bindings = [
-        ("chosen.forbids", text_of(chosen.get("forbids"))),
-        ("first_use_scene", text_of(concept.get("first_use_scene"))),
+        ("chosen.forbids", text_of(chosen.get("forbids")), "concept"),
+        ("first_use_scene", text_of(concept.get("first_use_scene")), "first-use"),
     ]
     for i, q in enumerate(concept.get("open_questions", [])[:2]):
-        bindings.append((f"open_questions[{i}]", text_of(q)))
-    for label, value in bindings:
-        if value and passage_coverage(value, shown_all) < thresholds["min_passage_coverage"]:
+        bindings.append((f"open_questions[{i}]", text_of(q), "open-questions"))
+    for label, value, section in bindings:
+        if not value:
+            continue
+        if passage_coverage(value, bodies.get(section, "")) < thresholds["min_passage_coverage"]:
             failures.append(
-                f"markdown: does not contain {label} from the sidecar - the written spec and concept.json "
-                "must be the same piece of work. Token overlap is not enough here: the passage itself has "
-                "to appear, because in a long spec the words of any paragraph are scattered through the rest."
+                f"markdown: section '{section}' does not contain {label} from the sidecar - the written "
+                "spec and concept.json must be the same piece of work. Token overlap is not enough here: "
+                "the passage itself has to appear in the section that is supposed to carry it, because in "
+                "a long spec the words of any paragraph are scattered through the rest."
             )
 
     for marker in schema["placeholder_markers"]:

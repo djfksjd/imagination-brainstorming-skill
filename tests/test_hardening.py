@@ -197,7 +197,7 @@ def test_the_schema_cannot_be_swapped(run, tmp_path, references, banlist):
     """A caller-supplied schema could set every floor to zero, leaving a gate
     that reports success without checking anything. The flag is gone."""
     bad = tmp_path / "schema.json"
-    bad.write_text(json.dumps({"counts": {}, "min_chars": {}}), encoding="utf-8")
+    bad.write_text(json.dumps({"counts": {}, "min_units": {}}), encoding="utf-8")
     res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
               "--markdown", str(references / "example-concept.md"),
               "--banlist", str(banlist), "--schema", str(bad))
@@ -367,3 +367,55 @@ def test_a_spec_missing_the_refusal_fails(gate, concept_path, example, tmp_path,
     res = gate(concept_path(example), "--markdown", str(md), "--json")
     assert res.code == 2
     assert any("does not contain chosen.forbids" in f for f in res.json()["failures"])
+
+
+def test_the_tail_of_a_passage_is_checked():
+    """The stepped range stops early unless the length is a multiple of the
+    step, so up to window-1 characters at the end went unchecked - and the end
+    of a sentence is where its conclusion and its negation live."""
+    from engine import passage_coverage
+    original = "the system must never invent a figure absent from the record, and it is forbidden"
+    reversed_tail = original[:62] + ", and it is expressly permitted"
+    assert len(reversed_tail) % 12 != 0, "the hole only opens when the length is not a multiple of the step"
+    assert passage_coverage(original, original) == 1.0
+    # Before the tail window was added this scored 1.0: every stepped window
+    # fell inside the unchanged first 62 characters.
+    assert passage_coverage(reversed_tail, original) < 1.0, "the tail was never being compared"
+
+
+def test_a_binding_is_checked_against_its_own_section(run, tmp_path, references, banlist):
+    """Searching the whole document let a refusal quoted in the ban list, or an
+    alternative recorded as rejected in the decision log, satisfy a binding for
+    a section that never mentions it."""
+    import json as _json
+    import re as _re
+    concept = _json.loads((references / "example-concept.json").read_text(encoding="utf-8"))
+    markdown = (references / "example-concept.md").read_text(encoding="utf-8")
+    forbids = concept["chosen"]["forbids"]
+
+    # Move the refusal out of the concept section and into the decision log.
+    m = _re.search(r"<!-- section: concept -->(.*?)<!-- section: first-use -->", markdown, _re.S)
+    gutted = markdown[:m.start(1)] + (
+        "\n## Concept\n\n"
+        "This section now describes the shape of the thing at length without ever saying what it refuses "
+        "to do, which is the one sentence the sidecar says belongs here. It reads as a complete section "
+        "and it clears every length and padding floor in the schema, because those measure quantity.\n\n"
+    ) + markdown[m.end(1):]
+    gutted = gutted.replace("<!-- section: decisions -->", f"<!-- section: decisions -->\n\n{forbids}\n", 1)
+
+    path = tmp_path / "moved.md"
+    path.write_text(gutted, encoding="utf-8")
+    res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
+              "--markdown", str(path), "--banlist", str(banlist), "--json")
+    assert res.code == 2
+    assert any("section 'concept' does not contain chosen.forbids" in f for f in res.json()["failures"])
+
+
+def test_cjk_prose_is_not_held_to_twice_the_bar():
+    """A floor asks for an amount of argument, not an amount of Unicode. One
+    Hangul syllable carries roughly what two Latin letters carry."""
+    from engine import text_units
+    assert text_units("column") == 6
+    assert text_units("기둥") == 4
+    assert text_units("ＡＢＣ") == 3, "fullwidth Latin must not inflate the count"
+    assert text_units("★" * 10) == 10, "decoration must not clear a prose floor"

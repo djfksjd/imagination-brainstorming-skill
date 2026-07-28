@@ -242,6 +242,30 @@ its own trial run and were caught by an adversarial read in minutes. Record what
 you accepted and what you rejected in the decision log; a correction you refused
 is as informative as one you took.
 
+**Run a direction-of-evidence audit, second reader or not.** "Attack it" is too
+vague to execute alone, and the inverted justification is the failure most
+likely to survive everything else in this skill. So: pull out every load-bearing
+*because*, *so*, and *therefore* in the concept, and for each one write down
+
+1. the premise or evidence it rests on;
+2. the conclusion it claims;
+3. the strongest **opposite** conclusion the same premise supports;
+4. the bridge - the assumption or observation that picks (2) over (3);
+5. whose decision is supposed to change, and what that person or system can
+   actually observe.
+
+A justification fails if the premise supports (3) at least as well as (2), or if
+the mechanism sits outside the observable boundary named in (5). Rewrite it or
+cut it, and record the verdict. The trial-run example fails at step 5 in one
+line: an automatic first-round scorer sees only the returned set, so it cannot
+observe the internal record that was being offered as the differentiator - which
+means that premise argues for accuracy, not for the record.
+
+Do the same for any number the concept displays as evidence: recompute it with
+the inputs in a different order. If it changes, it is a diagnostic of one
+particular run and may be shown as that, but it cannot be presented as an
+intrinsic property of anything.
+
 Only then ask the user to review:
 
 > "Spec written to `<path>`. Please read it and tell me what to change before we

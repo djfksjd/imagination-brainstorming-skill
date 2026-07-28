@@ -1,6 +1,6 @@
 {
   "deck": "spec-schema",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "note": "What spec_gate.py enforces on concept.json and the written spec. The gate cannot judge whether a concept is good, and it does not pretend to: what it proves is that the work which makes a concept usable - premises tested, instincts burned with the user's agreement, three genuinely different approaches, a stated refusal, named neighbours, honest open questions - was not skipped, and that the finished spec exists, contains the concept it specifies, and does not restate the very skeleton the session banned. The passage threshold is calibrated on real drafts: a reworded but present passage scored 0.42 and a wholesale replacement scored 0.00, so 0.35 separates rewriting from removing without forcing an author to copy the sidecar verbatim.",
   "placeholder_markers": [
     "tbd",
@@ -29,7 +29,7 @@
     "min_nearest_existing": 1,
     "min_decisions": 2
   },
-  "min_chars": {
+  "min_units": {
     "brief": 40,
     "premise_why": 25,
     "premises_note": 60,
@@ -100,5 +100,6 @@
     "writing-plans",
     "imagination-engine",
     "stop"
-  ]
+  ],
+  "units_note": "Minimums are counted in units, not code points: a CJK letter or digit counts as two, because one Han character or Hangul syllable carries roughly what two Latin letters carry. Counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for."
 }

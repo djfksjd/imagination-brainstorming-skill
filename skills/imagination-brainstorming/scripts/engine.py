@@ -20,7 +20,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 DECK_DIR = SKILL_DIR / "references" / "decks"
@@ -95,6 +95,56 @@ def normalize(text: str) -> str:
         text = text.replace(src, dst)
     text = text.lower()
     return re.sub(r"\s+", " ", text).strip()
+
+
+
+PLACEHOLDER_NAMES = {
+    "tbd", "todo", "tba", "n/a", "na", "none", "null", "untitled", "unnamed",
+    "placeholder", "name", "?", "??", "???", "xxx", "test", "foo", "bar",
+}
+
+
+def text_units(text: str) -> int:
+    """Length in units rather than code points.
+
+    Every minimum in this skill is asking for an amount of *argument*, not an
+    amount of Unicode. Counting code points makes a Korean, Japanese or Chinese
+    section roughly twice as hard to satisfy as an English one carrying the same
+    content, because one Han character or Hangul syllable does the work of about
+    two Latin letters. So a wide letter or digit counts as two units.
+
+    Only letters and digits are widened. Wide punctuation, box drawing and emoji
+    stay at one, otherwise a row of decorative characters would clear a floor
+    that plain prose has to earn. Compatibility-normalizing first stops fullwidth
+    Latin from being used to inflate the count.
+    """
+    if not isinstance(text, str):
+        return 0
+    total = 0
+    for ch in unicodedata.normalize("NFKC", text):
+        category = unicodedata.category(ch)
+        if category in ("Cc", "Cf", "Mn", "Me"):
+            continue
+        if category[0] in ("L", "N") and unicodedata.east_asian_width(ch) in ("W", "F"):
+            total += 2
+        else:
+            total += 1
+    return total
+
+
+def is_placeholder(text: str) -> bool:
+    """Whether a name is a stand-in rather than a name.
+
+    A length floor cannot answer this: it rejects a complete two-character name
+    and accepts 'TBD - fill this in later'. So the check asks what it actually
+    wants to know - is there a name here at all.
+    """
+    stripped = normalize(text).strip(" .-_·")
+    if not stripped:
+        return True
+    if not any(unicodedata.category(ch)[0] in ("L", "N") for ch in stripped):
+        return True
+    return stripped in PLACEHOLDER_NAMES
 
 
 def seed_int(*parts: Any) -> int:
@@ -221,6 +271,13 @@ def passage_coverage(needle: str, haystack: str, window: int = 24, step: int = 1
     if len(a) <= window:
         return 1.0 if a in b else 0.0
     windows = [a[i:i + window] for i in range(0, len(a) - window + 1, step)]
+    # The stepped range stops early whenever the length is not a multiple of the
+    # step, leaving up to window-1 characters at the end unchecked. That tail is
+    # where a sentence puts its conclusion and its negation, so it is exactly
+    # the span an author could reverse while still scoring 1.0.
+    tail = a[-window:]
+    if tail != windows[-1]:
+        windows.append(tail)
     return sum(1 for w in windows if w in b) / len(windows)
 
 

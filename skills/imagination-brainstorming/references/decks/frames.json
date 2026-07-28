@@ -1,6 +1,6 @@
 {
   "deck": "frames",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "note": "Reframing lenses for the divergence stage. Three approaches drawn from three different categories cannot be variants of each other - which is the failure mode of the usual 'here are three options' move, where two are decoys. 'characteristic_failure' is a hint, not the answer: each approach must state how it would actually fail in this brief, and divergence_check.py rejects a set whose stated failure modes are the same failure wearing different words.",
   "categories": [
     { "id": "subtraction", "label": "Remove something the brief treats as essential" },

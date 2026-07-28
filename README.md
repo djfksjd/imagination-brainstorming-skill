@@ -84,9 +84,6 @@ I have three ideas for the onboarding flow and they all feel like the same idea.
 Push on this properly before I commit to one.
 ```
 
-> [!TIP]
-> Bring your own exclusions. "Not another form" is worth more than any amount of encouragement — and the skill will ask for them if you do not offer.
-
 ### What a session actually does
 
 | Stage | You see | Enforced by |
@@ -106,6 +103,86 @@ Push on this properly before I commit to one.
 | **Question families** (12) | unstated premise · the version you would hate · success redefined · constraint inverted · who it is not for · what must stay impossible · the graveyard · what it commits people to · adjacent worlds · how it ends · the scale where it breaks · the administrative half |
 | **Frames** (40, in 10 categories) | subtraction · inversion · actor-shift · scale-shift · time-shift · economy · maintenance · medium-shift · ritual · failure-first |
 | **Clichés** | pitch reflexes, hollow adjectives, and the structural patterns that mark a positioning rather than a concept |
+
+### Your part in it
+
+This skill is a conversation, not a command. Four moments decide whether the session is worth anything, and all four are yours.
+
+**1 · Answering the premise questions.** They will not feel like requirements gathering, because they are not. *"Who is affected by this without ever choosing to use it?"* is not a stakeholder question. The useful answers are the ones you have to think about; the ones that start *"well, obviously…"* are exactly the premise the session is trying to find. Say the obvious thing anyway — that sentence is the material.
+
+**2 · Signing the ban contract.** After about three questions you are shown roughly six answers plus the **skeleton** they share — the structure underneath, not the wording: *an apparatus, a feed, a marketplace, a dashboard*. You will be asked:
+
+> "These are the answers that come cheapest here, so I'm taking them off the table. Which of them were you already picturing, and what would you add?"
+
+Answer both halves. Naming the one you were already picturing costs nothing and is the single most useful sentence in the session. Add your own exclusions in whatever form they come — *"nothing that adds screen time at the bedside"* is fine even though no script can match it; the gate files it as a manual check and will not pass the spec until it has a written answer.
+
+**3 · The unsafe seat.** One of the three approaches is deliberately the one you are expected to reject, argued in the same detail as the others. Reject it if it is wrong — but say *why*, in one sentence. That sentence usually relocates the concept more than picking the winner does.
+
+**4 · The review gate.** The spec is written to a file and handed back with *"please read it and tell me what to change."* This is not a formality. The gates check that the work was done, not that the concept is right — see below.
+
+### The three things to say
+
+**When every option feels the same:**
+
+```text
+These still feel like one idea in three costumes. Regenerate.
+```
+
+It redeals from a fresh run, adds *every element of the previous round* to the contract, and deletes one more premise from the excavation — then tells you which premise that was. That last line is usually the point.
+
+**When the conventional answer is actually right:** say so. The skill is required to agree in one sentence, leave, and do the ordinary work outside itself. A login form does not need a premise excavation, and the skill is forbidden from pretending otherwise.
+
+**When the brief is too big:** it should catch this in recon, but if it does not — *"this is three systems, split it"* — each piece gets its own session and its own spec.
+
+### Running the scripts yourself
+
+Python 3.11, standard library, nothing to install. Scripts live in `skills/imagination-brainstorming/scripts/`; write working files to a scratch directory, never into the skill folder.
+
+```bash
+# 1 · deal the question families and three incompatible frames
+python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
+
+# 2 · build the contract — twice, and the order matters
+python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
+    --skeleton "a checklist filled in at the end of a shift" --out /tmp/work
+#    …show it to the user, get their answer, and only then:
+python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
+    --skeleton "a checklist filled in at the end of a shift" \
+    --user exclusions.txt --confirmed --out /tmp/work
+
+# 3 · prove the three approaches are actually three
+python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+
+# 4 · gate the spec, its sidecar and the contract together — all three required
+python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
+    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+```
+
+`--confirmed` records consent that has already happened. Setting it before the user has seen the list is a lie the rest of the pipeline then relies on, and the gate has no way to detect it — which is why it is a two-step call rather than one flag.
+
+`cliche_lint.py` is for **drafts mid-session**. Run it on a finished spec and it will flag the spec's own ban-list section; `spec_gate.py` is the one that lints a finished spec, and it excises that section first.
+
+### Exit codes, and what to do about each
+
+| Code | Meaning | The fix |
+|---|---|---|
+| `0` | passed | — |
+| `1` | usage, missing file, or malformed deck | a typo, not a judgement |
+| `2` | **the contract or the spec is incomplete** — too few instincts, no skeleton, an unconfirmed contract, a missing section, a manual check with no written answer, or a spec that does not actually contain its own sidecar | do the missing work |
+| `3` | **the approaches are variants**, or banned material is present | rewrite, or redeal with `--run 2` and build again |
+
+### What the gates cannot check
+
+> [!IMPORTANT]
+> They are floors. They prove the work was **done** — not that it was **right**. Three things pass every gate in this repo:
+>
+> - **a justification that inverts its own evidence** — an argument whose premise, read carefully, supports the opposite conclusion;
+> - **a mechanism attackable on its own terms** — for example a number that changes depending on the order it was computed in, presented as the concept's proof of transparency;
+> - **three approaches that are genuinely one idea** in three vocabularies. The check catches restatement and shared failure modes; it cannot read.
+>
+> All three occurred during this skill's own trial run and all three were caught by a person, not a script. So: before the spec reaches you, have a second reader attack it — another model, a colleague — and ask them to argue that **it loses**, not that it could be improved. "How would you make this better" gets you polish. "Why does this lose" gets you the inverted premise.
+>
+> The skill also runs a **direction-of-evidence audit** on itself: for every load-bearing *because*, it has to write down the opposite conclusion the same premise would support, and name what the deciding party can actually observe. That is the check that catches *"the judge is a machine, therefore our internal record is the differentiator"* — a machine judge cannot observe the internal record, so the premise argues for the opposite.
 
 ## What it will not do
 

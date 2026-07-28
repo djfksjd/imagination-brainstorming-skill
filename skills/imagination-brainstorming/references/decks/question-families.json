@@ -1,6 +1,6 @@
 {
   "deck": "question-families",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "note": "Question types for premise excavation. Ordinary requirements questions ('who is the user, what are the constraints, what does success look like') are premise-preserving: they refine the idea the person already has. Each family here is designed to expose something the brief takes for granted. Ask one at a time, in the user's language, phrased for their actual brief - never paste a template phrasing verbatim.",
   "families": [
     {
