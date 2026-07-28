@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "imagination-brainstorming",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Collaborative idea development that refuses to converge on the obvious. Use when the user wants to think an idea through before building it, or says their options all feel generic, safe, or interchangeable. Interrogates premises rather than collecting requirements, burns the obvious answers into a ban contract with the user, deals mutually incompatible approaches from a seeded deck, and gates the written concept spec before review. Produces a spec and hands off; never implements. Works in any language.",
   "author": { "name": "djfksjd", "url": "https://github.com/djfksjd" },
   "homepage": "https://github.com/djfksjd/imagination-brainstorming-skill",

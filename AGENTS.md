@@ -80,4 +80,7 @@ never resubmission with the numbers rounded.
   unknowns.
 - Never claim nobody has thought of this. Name the nearest existing things and
   state the difference.
+- When a second reader is available, have them attack the concept before the
+  user reviews it. The gates cannot catch an inverted justification or a
+  mechanism that is attackable on its own terms; an adversarial read can.
 - Do not soften the user's request to make it easier to spec.

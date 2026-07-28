@@ -229,6 +229,19 @@ Then read it once yourself with fresh eyes: placeholders, contradictions between
 sections, requirements that could be read two ways, scope that should have been
 split. Fix inline; no second pass needed.
 
+**If a second reader is available - another model, a colleague - have them
+attack the concept before the user sees it.** Ask them to argue that it loses,
+not that it could be improved. This is not ceremony: the gate proves the work
+was not skipped and the lint proves specific familiar moves are absent, and
+neither can catch the two failures that actually sink a concept - a
+justification that inverts its own evidence ("the reader is a machine, so the
+internal record matters" when that fact argues for the opposite), and a
+mechanism that is attackable on its own terms (a number that changes depending
+on the order it was computed in). Both survived every gate in this skill during
+its own trial run and were caught by an adversarial read in minutes. Record what
+you accepted and what you rejected in the decision log; a correction you refused
+is as informative as one you took.
+
 Only then ask the user to review:
 
 > "Spec written to `<path>`. Please read it and tell me what to change before we

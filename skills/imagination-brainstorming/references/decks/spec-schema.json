@@ -1,6 +1,6 @@
 {
   "deck": "spec-schema",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "note": "What spec_gate.py enforces on concept.json and the written spec. The gate cannot judge whether a concept is good, and it does not pretend to: what it proves is that the work which makes a concept usable - premises tested, instincts burned with the user's agreement, three genuinely different approaches, a stated refusal, named neighbours, honest open questions - was not skipped, and that the finished spec exists and does not restate the very skeleton the session banned.",
   "placeholder_markers": ["tbd", "todo", "tbc", "fixme", "xxx", "lorem ipsum", "to be determined", "placeholder", "???"],
   "question_marks": ["?", "？", "؟", "¿"],
