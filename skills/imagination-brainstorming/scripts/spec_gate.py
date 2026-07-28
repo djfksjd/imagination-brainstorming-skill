@@ -530,28 +530,56 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
     # An absent field on either side used to skip these comparisons rather than
     # fail them, which made a stripped-down file safer to pass than an honest
     # one from another session.
-    # A contract built for a bakery launch validated a concept about a hospital
-    # ward, because nothing compared the two briefs. Containment of the shorter
-    # brief in the longer one, so that the sidecar restating and expanding the
-    # ask - which is what the field is for - still matches, while a contract
-    # from an unrelated session does not. This is a floor on subject matter, not
-    # proof of provenance: two sessions about the same subject still validate
-    # each other's contracts, and an author who writes both files can write two
-    # briefs that overlap. It raises the cost of a substituted contract from
-    # nothing to rewriting it.
+    #
+    # This was a containment ratio between the ban list's brief and the
+    # sidecar's free-form `brief`, at 0.5, and it failed in both directions: a
+    # ban list whose brief was the single word "ward" passed, because one word
+    # is fully contained in anything, while an honest rewording of the same
+    # brief in synonyms was refused. A word-overlap score cannot establish
+    # provenance and should never have been asked to.
+    #
+    # So the join is the one the skeleton already uses: the sidecar records the
+    # brief the contract was built for, and the two strings must be the same
+    # string. That is a consistency check between two files the same caller
+    # writes - exactly as strong as the skeleton check and no stronger - and it
+    # is stated that way everywhere. It does establish that substituting
+    # another session's contract means editing the sidecar to match, and that a
+    # contract must name a subject rather than a word. The free-form `brief`,
+    # which is meant to restate and expand the ask, is now compared only as a
+    # warning, because differing there is what an honest session looks like.
     banlist_brief = text_of(banlist.get("brief"))
+    contract_brief = text_of(contract.get("brief")) if isinstance(contract, dict) else ""
     if not banlist_brief:
         failures.append(
             "the ban list names no brief - a contract that does not say what it was built for cannot be "
             "shown to belong to this session"
         )
-    elif brief:
+    elif text_units(banlist_brief) < mins["contract_brief"] or \
+            len(content_tokens(banlist_brief)) < counts["min_brief_tokens"]:
+        failures.append(
+            f"the ban list's brief '{banlist_brief[:40]}' names a word rather than a subject "
+            f"(at least {mins['contract_brief']} units and {counts['min_brief_tokens']} content words). "
+            "A one-word brief is contained in every other brief, which is how a contract from another "
+            "session used to pass this check"
+        )
+    if not contract_brief:
+        failures.append(
+            "banlist_contract.brief: missing - the sidecar has to record the brief the contract was built "
+            "for, or nothing joins the two files but the caller's word"
+        )
+    elif banlist_brief and normalize(contract_brief) != normalize(banlist_brief):
+        failures.append(
+            "the ban list was built for a different brief than the one concept.json records: ban list "
+            f"'{banlist_brief[:50]}' vs sidecar '{contract_brief[:50]}'. A contract gates the session it "
+            "was built in, and the two files must at least agree on which session that is"
+        )
+    if banlist_brief and brief:
         shared = max(coverage(banlist_brief, brief), coverage(brief, banlist_brief))
         if shared < thresholds["min_brief_overlap"]:
-            failures.append(
-                f"the ban list was built for a different brief ({shared:.0%} of the shorter one reappears "
-                f"in the other): ban list '{banlist_brief[:60]}' vs concept '{brief[:60]}'. A contract "
-                "gates the session it was built in"
+            warnings.append(
+                f"the concept's brief and the contract's share little vocabulary ({shared:.0%}): "
+                f"'{banlist_brief[:40]}' vs '{brief[:40]}'. Rewording in synonyms looks the same as "
+                "swapping the contract from here, so this is a note to read, not a verdict"
             )
 
     contract_skeleton = text_of(contract.get("skeleton")) if isinstance(contract, dict) else ""

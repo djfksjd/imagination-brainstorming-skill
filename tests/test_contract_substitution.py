@@ -9,6 +9,7 @@ dropping them discharged every check the user personally asked for.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -256,3 +257,59 @@ def test_a_contract_with_no_brief_is_refused(run, tmp_path, references, banlist)
     res = gate_with(run, references, trimmed)
     assert res.code == 2, res
     assert any("names no brief" in f for f in res.json()["failures"])
+
+
+# --- what the brief join can and cannot establish --------------------------
+#
+# It was a containment ratio at 0.5 between the ban list's brief and the
+# sidecar's free-form one, and it failed in both directions at once: a ban list
+# whose brief was the single word "ward" passed, because one word is contained
+# in every longer brief, and an honest rewording of the same brief in synonyms
+# was refused. A word-overlap score cannot establish provenance. What the gate
+# checks now is that the two files record the same brief string, which is the
+# join the skeleton already uses, and that the string names a subject.
+
+
+def test_a_one_word_brief_no_longer_slips_a_contract_through(run, tmp_path, references, banlist):
+    trimmed = rewrite(banlist, tmp_path, brief="ward")
+    res = gate_with(run, references, trimmed)
+    assert res.code == 2, res
+    failures = " | ".join(res.json()["failures"])
+    assert "names a word rather than a subject" in failures
+
+
+def test_a_contract_whose_brief_differs_from_the_sidecar_is_refused(run, tmp_path, references, banlist):
+    trimmed = rewrite(banlist, tmp_path, brief="a way for our clinic to hand over patients")
+    res = gate_with(run, references, trimmed)
+    assert res.code == 2, res
+    assert any("different brief than the one concept.json records" in f for f in res.json()["failures"])
+
+
+def test_rewording_the_concepts_own_brief_is_a_warning_not_a_failure(run, tmp_path, references,
+                                                                     banlist, example):
+    """The honest half: the sidecar's `brief` restates and expands the ask, so
+    it is allowed to share no vocabulary with the contract's one-line version."""
+    concept = deepcopy(example)
+    concept["brief"] = (
+        "Transferring clinical responsibility between nursing teams at changeover, so that whatever is "
+        "still owed to a patient moves from one named person to another without being retyped."
+    )
+    path = tmp_path / "reworded.json"
+    path.write_text(json.dumps(concept, ensure_ascii=False), encoding="utf-8")
+    res = run("spec_gate.py", "--concept", str(path),
+              "--markdown", str(references / "example-concept.md"),
+              "--banlist", str(banlist), "--json")
+    assert res.code == 0, res.out
+    assert any("share little vocabulary" in w for w in res.json()["warnings"])
+
+
+def test_a_sidecar_that_records_no_brief_is_refused(run, tmp_path, references, banlist, example):
+    concept = deepcopy(example)
+    del concept["banlist_contract"]["brief"]
+    path = tmp_path / "nobrief.json"
+    path.write_text(json.dumps(concept, ensure_ascii=False), encoding="utf-8")
+    res = run("spec_gate.py", "--concept", str(path),
+              "--markdown", str(references / "example-concept.md"),
+              "--banlist", str(banlist), "--json")
+    assert res.code == 2
+    assert any("banlist_contract.brief: missing" in f for f in res.json()["failures"])

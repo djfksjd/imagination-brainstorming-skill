@@ -29,6 +29,7 @@
     }
   ],
   "banlist_contract": {
+    "brief": "a way for our ward to hand over shifts",
     "model_instincts": [
       "handover app with structured form",
       "digitised SBAR template",

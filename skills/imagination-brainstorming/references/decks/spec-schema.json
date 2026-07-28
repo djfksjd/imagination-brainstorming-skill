@@ -27,10 +27,12 @@
     "approaches": 3,
     "min_open_questions": 2,
     "min_nearest_existing": 1,
-    "min_decisions": 2
+    "min_decisions": 2,
+    "min_brief_tokens": 3
   },
   "min_units": {
     "brief": 32,
+    "contract_brief": 20,
     "premise_why": 20,
     "premises_note": 48,
     "skeleton": 32,
@@ -102,5 +104,6 @@
     "stop"
   ],
   "units_note": "Minimums are counted in units, not code points. A letter or digit counts one unit, and a wide one - a Han character, a Hangul syllable, a kana - counts two, because it carries roughly what two Latin letters carry; counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for. Punctuation and whitespace count nothing at all: they used to count one unit per run, and that run rule reset the mark cap on every full stop, so a hundred and twenty dots each bought two more accents and 370 characters of padding measured 251 units against a 250-unit floor. Combining marks count, up to two per base letter or digit, and punctuation does not reset that cap - stripping marks was right for stray formatting characters and wrong for Thai, Devanagari, Arabic and Hebrew, which write their vowels and tones that way. Every floor in this file was multiplied by 0.8 when word gaps stopped counting, so the prose that passed before still passes and the bar on real writing is unchanged. A floor is still only a floor: a hundred distinct words of nothing clears a hundred units, which is what the repetition check and a reader are for.",
-  "bindings_note": "Assertions the written spec must make in its own voice, marked with <!-- bind: <field> --> ... <!-- /bind --> and compared exactly after NFKC and whitespace collapse. A similarity score was tried first and could not tell the difference between a proposition being asserted and the same words appearing inside a sentence that rejects them - \"we considered 'X' but ultimately allow it\" scored a perfect match against X. Bound fields: chosen.forbids, chosen.impossible_now, first_use_scene, and every open_questions[i]. Each must appear exactly once, inside its designated section, as plain prose rather than a quotation or a struck-through line."
+  "bindings_note": "Assertions the written spec must make in its own voice, marked with <!-- bind: <field> --> ... <!-- /bind --> and compared exactly after NFKC and whitespace collapse. A similarity score was tried first and could not tell the difference between a proposition being asserted and the same words appearing inside a sentence that rejects them - \"we considered 'X' but ultimately allow it\" scored a perfect match against X. Bound fields: chosen.forbids, chosen.impossible_now, first_use_scene, and every open_questions[i]. Each must appear exactly once, inside its designated section, as plain prose rather than a quotation or a struck-through line.",
+  "brief_note": "The ban list and concept.json must record the same brief string, normalized - the same join the skeleton uses. This was a containment ratio at 0.5 and it failed both ways: a ban list whose brief was the single word 'ward' passed, because one word is contained in every longer brief, while an honest rewording of the same brief in synonyms was refused. A word-overlap score cannot establish provenance. Equality between the two files is a consistency check on two files the same caller writes - no stronger than that, and no weaker than the skeleton check beside it - and the ban list's brief must name a subject rather than a word. The sidecar's own free-form 'brief' field, which restates and expands the ask, is compared only as a warning."
 }

@@ -10,6 +10,11 @@ from pathlib import Path
 
 import pytest
 
+# The brief the shipped example was built with. The gate requires the ban list
+# and the sidecar to record the same brief string, so a fixture contract has to
+# carry the real one.
+BRIEF = "a way for our ward to hand over shifts"
+
 REPO = Path(__file__).resolve().parent.parent
 SKILL = REPO / "skills" / "imagination-brainstorming"
 SCRIPTS = SKILL / "scripts"
@@ -88,7 +93,7 @@ def banlist(tmp_path: Path, run, instincts_file: Path, user_file: Path, skeleton
     """The contract the shipped example was built against: same instincts, same
     user exclusions, signed."""
     res = run(
-        "banlist.py", "--brief", "ward handover", "--instincts", str(instincts_file),
+        "banlist.py", "--brief", BRIEF, "--instincts", str(instincts_file),
         "--user", str(user_file), "--skeleton", skeleton, "--confirmed", "--out", str(tmp_path),
     )
     assert res.code == 0, res
