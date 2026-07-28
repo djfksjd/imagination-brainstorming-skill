@@ -406,6 +406,22 @@ answer. The stated limit is the overlap: a single match longer than 512
 characters that straddles a window boundary can be missed. Every structural
 pattern in the bundled deck matches a clause, and a test pins that.
 
+**`imagination-engine` decides this field the other way, and says so.** Its
+gate refuses to compile any user-supplied `structural_patterns[].regex` at
+all, printing a refusal that names the pattern rather than running it -
+because that gate already refuses every other piece of run-supplied policy
+(there is no `--rubric`, no `--min-mean`, no honoured `--allow` there), and
+because a timer-based defence means what actually got linted depends on how
+fast the host machine is, a verdict that should not vary by machine. This
+gate takes the cost instead of the refusal: the structural scan and
+character cap above hold in both cases, but the `SIGALRM` timer that catches
+what the scan misses is POSIX-only, so on Windows only the scan and the
+character cap are defending the gate, and even on macOS or Linux a pattern
+that hangs on a slow machine and completes on a fast one is exactly the
+machine-dependent verdict the engine's refusal is built to avoid. Moving
+between the two skills, expect a pattern that compiles quietly here to be
+refused by name there.
+
 ### The protected set
 
 The burnt first instincts and the user's own exclusions are the two things this
