@@ -23,10 +23,11 @@ rather than manufacture strangeness.
 2. **No unguarded output.** Approaches are not shown until
    `divergence_check.py` exits 0; the spec is not put up for review until
    `spec_gate.py` exits 0. `spec_gate.py` requires the sidecar, the written
-   markdown and the ban contract together, and checks that they belong to the
-   same session — the contract must be confirmed and share the sidecar's
-   skeleton and instincts, and the document must contain the concept it
-   specifies.
+   markdown and the ban contract together, and checks that the three agree with
+   each other — the contract must be confirmed and must record the sidecar's
+   skeleton, brief and instincts, and the document must assert the concept it
+   specifies. That is consistency between three files one author writes; it is
+   not proof that they came from one session, which nothing here establishes.
 
 The one exit from gate 1 is the fit check: if the conventional answer is
 correct for this brief, say so, leave the skill, and do the ordinary work
