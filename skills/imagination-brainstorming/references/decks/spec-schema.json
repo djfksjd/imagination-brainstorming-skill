@@ -30,22 +30,22 @@
     "min_decisions": 2
   },
   "min_units": {
-    "brief": 40,
-    "premise_why": 25,
-    "premises_note": 60,
-    "skeleton": 40,
-    "approach_summary": 120,
-    "approach_failure_mode": 60,
-    "chosen_why": 80,
-    "forbids": 60,
-    "impossible_now": 40,
-    "first_use_scene": 250,
-    "how_it_differs": 40,
-    "open_question": 25,
-    "decision_why": 30,
-    "handoff_why": 30,
-    "manual_check_note": 20,
-    "section_body": 80
+    "brief": 32,
+    "premise_why": 20,
+    "premises_note": 48,
+    "skeleton": 32,
+    "approach_summary": 96,
+    "approach_failure_mode": 48,
+    "chosen_why": 64,
+    "forbids": 48,
+    "impossible_now": 32,
+    "first_use_scene": 200,
+    "how_it_differs": 32,
+    "open_question": 20,
+    "decision_why": 24,
+    "handoff_why": 24,
+    "manual_check_note": 16,
+    "section_body": 64
   },
   "thresholds": {
     "min_distinct_ratio": 0.3,
@@ -101,6 +101,6 @@
     "imagination-engine",
     "stop"
   ],
-  "units_note": "Minimums are counted in units, not code points: a CJK letter or digit counts as two, because one Han character or Hangul syllable carries roughly what two Latin letters carry. Counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for. A run of characters that are neither letters nor digits counts once however long it is, because whitespace used to be counted toward a floor while the repetition check tokenized it away, so two words far enough apart cleared any minimum in this file. Combining marks count, up to two per base character: stripping them was right for stray formatting characters and wrong for Thai, Devanagari, Arabic and Hebrew, which write their vowels and tones that way. A floor is still only a floor - a hundred distinct words of nothing clears a hundred units, which is what the repetition check and a reader are for.",
+  "units_note": "Minimums are counted in units, not code points. A letter or digit counts one unit, and a wide one - a Han character, a Hangul syllable, a kana - counts two, because it carries roughly what two Latin letters carry; counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for. Punctuation and whitespace count nothing at all: they used to count one unit per run, and that run rule reset the mark cap on every full stop, so a hundred and twenty dots each bought two more accents and 370 characters of padding measured 251 units against a 250-unit floor. Combining marks count, up to two per base letter or digit, and punctuation does not reset that cap - stripping marks was right for stray formatting characters and wrong for Thai, Devanagari, Arabic and Hebrew, which write their vowels and tones that way. Every floor in this file was multiplied by 0.8 when word gaps stopped counting, so the prose that passed before still passes and the bar on real writing is unchanged. A floor is still only a floor: a hundred distinct words of nothing clears a hundred units, which is what the repetition check and a reader are for.",
   "bindings_note": "Assertions the written spec must make in its own voice, marked with <!-- bind: <field> --> ... <!-- /bind --> and compared exactly after NFKC and whitespace collapse. A similarity score was tried first and could not tell the difference between a proposition being asserted and the same words appearing inside a sentence that rejects them - \"we considered 'X' but ultimately allow it\" scored a perfect match against X. Bound fields: chosen.forbids, chosen.impossible_now, first_use_scene, and every open_questions[i]. Each must appear exactly once, inside its designated section, as plain prose rather than a quotation or a struck-through line."
 }

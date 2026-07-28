@@ -111,7 +111,9 @@ def text_units(text: str) -> int:
     """Length in units rather than code points.
 
     Every minimum in this skill is asking for an amount of *argument*, not an
-    amount of Unicode. Three things follow, and each one was a defect first.
+    amount of Unicode. Three rules, each of which was a defect first, and each
+    of which is now stated identically in the sibling skill so the two
+    measurements cannot drift apart again.
 
     A wide letter or digit counts as two units. Counting code points makes a
     Korean, Japanese or Chinese section roughly twice as hard to satisfy as an
@@ -120,29 +122,31 @@ def text_units(text: str) -> int:
     are widened; wide punctuation, box drawing and emoji stay at one.
     Compatibility-normalizing first stops fullwidth Latin inflating the count.
 
-    A run of characters that are neither letters nor digits counts once, however
-    long it is. `text_units` counted whitespace while `distinct_ratio` tokenizes
-    it away, so `'Nurse' + 240 spaces + 'waits'` measured 250 units at a perfect
-    1.00 distinct ratio and cleared every floor in the schema. One space between
-    two words still costs the one unit it always did, so ordinary prose measures
-    what it did before; a hundred spaces, dots or dashes in a row cost that same
-    one. This is a floor on content units, not a claim that padding is now
-    impossible - an author willing to type a hundred distinct words still clears
-    a floor with a hundred words of nothing, which is what `distinct_ratio` and
-    a human reader are for.
+    Punctuation and whitespace never count. They used to count one unit per
+    run, which was enough to make `'Nurse' + 120 x (dot + two accents) +
+    'waits'` measure 251 units against a 250-unit floor: the run rule reset the
+    mark cap on every dot, so each dot bought two more marks. Nothing that is
+    not a letter, a digit or a mark on one pays anything now.
 
-    Combining marks count, up to two per base character. Stripping them was
+    Combining marks count, up to two per base letter or digit, and the cap is
+    *not* reset by punctuation or whitespace. Stripping marks entirely was
     right for stray zero-width joiners and wrong for every script that writes
     its vowels and tones as marks: 282 characters of Thai prose measured 209
     units and were refused. Two per base is what ordinary Thai, Devanagari,
     Arabic and Hebrew orthography uses; past that the marks are decoration
-    stacked on one letter, and they stop paying.
+    stacked on one letter, and they stop paying. A mark that follows no base at
+    all pays nothing.
+
+    This narrows padding rather than eliminating it. An author willing to type
+    a hundred distinct words still clears a hundred units with a hundred words
+    of nothing; that is what `distinct_ratio` and a human reader are for.
     """
     if not isinstance(text, str):
         return 0
     total = 0
-    marks_on_base = 0
-    in_separator = False
+    # Starts at the cap: a mark before any base character has nothing to
+    # attach to, so it buys nothing.
+    marks_on_base = MAX_MARKS_PER_BASE
     for ch in unicodedata.normalize("NFKC", text):
         category = unicodedata.category(ch)
         if category in ("Cc", "Cf"):
@@ -152,13 +156,11 @@ def text_units(text: str) -> int:
                 marks_on_base += 1
                 total += 1
             continue
-        marks_on_base = 0
         if category[0] in ("L", "N"):
-            in_separator = False
+            marks_on_base = 0
             total += 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
-        elif not in_separator:
-            in_separator = True
-            total += 1
+        # Punctuation and whitespace: no unit, and deliberately no reset of the
+        # mark cap. Resetting here is exactly what reopened the padding hole.
     return total
 
 
@@ -235,6 +237,29 @@ def has_cjk(text: str) -> bool:
     return any(is_cjk(ch) for ch in text)
 
 
+def word_tokens(text: str) -> list[str]:
+    """Words, where a combining mark belongs to the word it sits on.
+
+    `\\w` does not match a combining mark, so every niqqud, harakat, matra or
+    Thai vowel sign split its word into single consonants: vocalized Hebrew
+    tokenized into twenty one-letter tokens and scored 0.30 on `distinct_ratio`
+    - repeated filler, said the gate, about ordinary prose. The scripts whose
+    orthography `text_units` was fixed for were still being measured as if the
+    marks were punctuation.
+    """
+    tokens: list[str] = []
+    current: list[str] = []
+    for ch in normalize(text):
+        if ch.isalnum() or ch == "'" or unicodedata.category(ch)[0] == "M":
+            current.append(ch)
+        elif current:
+            tokens.append("".join(current))
+            current = []
+    if current:
+        tokens.append("".join(current))
+    return tokens
+
+
 def content_tokens(text: str) -> set[str]:
     """Meaningful units of a text, for overlap comparison.
 
@@ -245,7 +270,7 @@ def content_tokens(text: str) -> set[str]:
     paragraphs score zero overlap, which is the opposite of the truth.
     """
     tokens: set[str] = set()
-    for word in re.findall(r"[\w']+", normalize(text), flags=re.UNICODE):
+    for word in word_tokens(text):
         if has_cjk(word):
             run = "".join(ch for ch in word if not ch.isspace())
             tokens.update(run[i:i + 2] for i in range(max(len(run) - 1, 1)))
@@ -324,7 +349,7 @@ def distinct_ratio(text: str) -> float:
     """Share of distinct tokens in a text. Padding a field to its character
     minimum with a repeated word or a run of the same letter scores near zero;
     ordinary prose scores well above 0.3."""
-    tokens = [w for w in re.findall(r"[\w']+", normalize(text), flags=re.UNICODE)]
+    tokens = word_tokens(text)
     if not tokens:
         return 0.0
     if len(tokens) == 1:

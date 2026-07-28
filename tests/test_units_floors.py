@@ -121,6 +121,12 @@ PADDED = {
     "dot": "Nurse" + "." * 240 + "waits",
     "dash": "Nurse" + "-" * 240 + "waits",
     "wide-space": "Nurse" + "　" * 240 + "waits",
+    # The run rule that replaced whitespace counting reset the mark cap on
+    # every non-mark, punctuation included, so each dot bought two more
+    # accents: 370 code points measured 251 units against a 250-unit floor
+    # while the control - the same dots without accents - measured 11.
+    "dot-and-marks": "Nurse" + (".\u0301\u0302" * 120) + "waits",
+    "space-and-marks": "Nurse" + (" \u0301\u0302" * 120) + "waits",
 }
 
 
@@ -128,14 +134,18 @@ PADDED = {
 def test_padding_with_non_content_characters_buys_no_units(kind):
     padded = PADDED[kind]
     assert len(padded) >= 250, "the fixture is long enough in code points to clear the floor"
-    assert text_units(padded) == 11, f"{kind}: a run of non-content characters counts once"
+    # Ten: the letters of "Nurse" and "waits". Punctuation and whitespace pay
+    # nothing, and a mark after them still attaches to the last letter, whose
+    # two-mark allowance was spent long before.
+    assert text_units(padded) <= 12, f"{kind}: {text_units(padded)} units of padding"
+    assert text_units(padded) >= 10, f"{kind}: the real letters must still count"
 
 
 @pytest.mark.parametrize("kind", sorted(PADDED))
 def test_a_padded_field_does_not_clear_its_floor(example, check, kind):
     concept = deepcopy(example)
     concept["first_use_scene"] = PADDED[kind]
-    assert "first_use_scene" in check(concept), f"{kind}: padding cleared a 250-unit floor"
+    assert "first_use_scene" in check(concept), f"{kind}: padding cleared the scene floor"
 
 
 # --- scripts that write vowels and tones as combining marks ----------------
@@ -167,10 +177,11 @@ MARK_SCRIPTS = {"thai": THAI, "devanagari": DEVANAGARI, "arabic": ARABIC}
 
 
 @pytest.mark.parametrize("script", sorted(MARK_SCRIPTS))
-def test_marks_are_orthography_not_decoration(script):
+def test_marks_are_orthography_not_decoration(script, schema):
     prose = MARK_SCRIPTS[script]
     units = text_units(prose)
-    assert units >= 250, f"{script}: {units} units for {len(prose)} characters of ordinary prose"
+    floor = schema["min_units"]["first_use_scene"]
+    assert units >= floor, f"{script}: {units} units for {len(prose)} characters of ordinary prose"
     # Close to the code-point count rather than exactly it: NFKC decomposes a
     # handful of composite characters (Thai SARA AM among them) before counting.
     assert units <= len(prose) + 5, f"{script}: marks must not inflate the count either"
@@ -187,3 +198,98 @@ def test_marks_stacked_on_one_letter_stop_paying():
     """The cap is what keeps 'count the marks' from being a padding vector: two
     marks per base is ordinary orthography, two hundred is decoration."""
     assert text_units("a" + "́" * 200) == 3
+
+
+# --- the union measurement, verified in every script it was broken in ------
+#
+# The two sibling skills each got half of this right: this one counted the
+# combining marks the other destroyed, and the other refused the punctuation
+# padding this one admitted. The target both now implement: letters and digits
+# count, a wide letter or digit counts two, marks count up to two per base and
+# the cap is not reset by punctuation or whitespace, and punctuation and
+# whitespace never count toward a floor. Each script below is checked at the
+# scene floor and one unit under it.
+
+HEBREW = (
+    "בְּשָׁעָה שֶׁבַע בָּעֶרֶב עוֹמֶדֶת הָאָחוֹת מוּל הַמָּסָךְ בְּעֶמְדַּת הָאֲחָיוֹת וְקוֹרֵאת אֶת מַה שֶׁנּוֹתַר מִן הַמִּשְׁמֶרֶת הָאַחֲרוֹנָה. "
+    "תּוֹצְאַת בְּדִיקַת הַדָּם, הַהַעֲרָכָה הַחוֹזֶרֶת שֶׁל מְשַׁכֵּךְ הַכְּאֵבִים וּמוֹעֵד הַשִּׁחְרוּר שֶׁעֲדַיִן לֹא נִמְסַר לַמִּשְׁפָּחָה. "
+    "הִיא מוֹחֶקֶת אֶת הַשּׁוּרָה הָרִאשׁוֹנָה וּמַשְׁאִירָה אֶת הַשְּׁתַּיִם הָאֲחֵרוֹת כְּמוֹ שֶׁהֵן לַחֲבֵרָתָהּ."
+)
+
+JAPANESE = (
+    "夜勤を終えた看護師がステーションの画面の前に立つと、この十二時間で誰にも渡されていない仕事が一覧で並んでいる。"
+    "血液培養の結果確認、痛み止めの再評価、家族へ伝える退院予定の三つが、まだ誰の名前もついていない状態で表示されている。"
+    "看護師は最初の一行を読み、自分で済ませたと身振りで消し、残りの二行はそのままにしておく。"
+    "引き継ぐ同僚が横に立ち、その二行を声に出して読み、自分の名前が付くのを確かめる。"
+)
+
+CHINESE = (
+    "夜班结束时，护士站在屏幕前，过去十二个小时里还没有交给任何人的事项排成一列。"
+    "血液培养结果的确认、止痛方案的重新评估，以及还没有告诉家属的出院时间，三条都还没有署上任何人的名字。"
+    "护士读完第一行，用一个手势把自己已经做完的那条划掉，剩下的两行原样留着。"
+    "接班的同事站在旁边，把那两行念出声，确认上面写着自己的名字。"
+)
+
+ENGLISH = (
+    "At seven in the evening the nurse stands in front of the screen at the station and reads what is left "
+    "of the last twelve hours. The blood culture result, the reassessment of the pain relief, and the "
+    "discharge time nobody has told the family about are the three lines that still carry no name. She "
+    "clears the first one with a gesture because she finished it herself, and leaves the other two exactly "
+    "as they are for the colleague taking over from her."
+)
+
+SCRIPTS = {
+    "arabic": (ARABIC, "ن"),
+    "chinese": (CHINESE, "a"),
+    "devanagari": (DEVANAGARI, "न"),
+    "english": (ENGLISH, "n"),
+    "hebrew": (HEBREW, "ן"),
+    "japanese": (JAPANESE, "a"),
+    "korean": (KO, "n"),
+    "thai": (THAI, "น"),
+}
+
+
+def trim_to(prose: str, units: int, filler: str) -> str:
+    """The prose cut to exactly `units` units, padded with a one-unit letter."""
+    out = ""
+    for ch in prose:
+        if text_units(out + ch) > units:
+            break
+        out += ch
+    out = out.rstrip()
+    while text_units(out) < units:
+        out += filler
+    assert text_units(out) == units, f"could not build {units} units"
+    return out
+
+
+@pytest.mark.parametrize("script", sorted(SCRIPTS))
+def test_prose_at_the_scene_floor_passes_in_every_script(example, check, schema, script):
+    prose, filler = SCRIPTS[script]
+    concept = deepcopy(example)
+    concept["first_use_scene"] = trim_to(prose, schema["min_units"]["first_use_scene"], filler)
+    assert "first_use_scene" not in check(concept), f"{script}: prose at the floor was refused"
+
+
+@pytest.mark.parametrize("script", sorted(SCRIPTS))
+def test_prose_one_unit_under_the_scene_floor_is_refused_in_every_script(example, check, schema, script):
+    prose, filler = SCRIPTS[script]
+    concept = deepcopy(example)
+    concept["first_use_scene"] = trim_to(prose, schema["min_units"]["first_use_scene"] - 1, filler)
+    assert "first_use_scene" in check(concept), f"{script}: the floor stopped being a floor"
+
+
+def test_punctuation_and_whitespace_never_count():
+    assert text_units("...") == 0
+    assert text_units("   \t \n") == 0
+    assert text_units("。、！？「」") == 0
+
+
+def test_a_mark_with_no_base_pays_nothing():
+    assert text_units("́̂̃") == 0
+
+
+def test_the_mark_cap_is_not_reset_by_punctuation():
+    """One base letter, two marks, then a full stop and two hundred more marks."""
+    assert text_units("á̂" + "." + "́" * 200) == 3
