@@ -33,7 +33,7 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
+        load_banlist, load_deck, lint_text, normalize, passage_coverage, read_json_arg, require_mapping,
     )
     from divergence_check import check as divergence_check  # type: ignore
 except ImportError:
@@ -41,7 +41,7 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
+        load_banlist, load_deck, lint_text, normalize, passage_coverage, read_json_arg, require_mapping,
     )
     from divergence_check import check as divergence_check  # type: ignore
 
@@ -429,6 +429,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
 
 def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any]) -> list[str]:
     failures: list[str] = []
+    thresholds = schema["thresholds"]
     required = [s["id"] for s in schema["required_markdown_sections"]]
     notes = {s["id"]: s["note"] for s in schema["required_markdown_sections"]}
     found = split_sections(markdown)
@@ -463,7 +464,7 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
     # The document must actually contain the concept it is the spec for.
     # Requiring the file to exist proved nothing while any ten paragraphs
     # carrying the right markers would pass.
-    shown_all = normalize(visible_text(markdown))
+    shown_all = visible_text(markdown)
     chosen = concept.get("chosen") if isinstance(concept.get("chosen"), dict) else {}
     bindings = [
         ("chosen.forbids", text_of(chosen.get("forbids"))),
@@ -472,10 +473,11 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
     for i, q in enumerate(concept.get("open_questions", [])[:2]):
         bindings.append((f"open_questions[{i}]", text_of(q)))
     for label, value in bindings:
-        if value and coverage(value, shown_all) < 0.5:
+        if value and passage_coverage(value, shown_all) < thresholds["min_passage_coverage"]:
             failures.append(
                 f"markdown: does not contain {label} from the sidecar - the written spec and concept.json "
-                "must be the same piece of work"
+                "must be the same piece of work. Token overlap is not enough here: the passage itself has "
+                "to appear, because in a long spec the words of any paragraph are scattered through the rest."
             )
 
     for marker in schema["placeholder_markers"]:

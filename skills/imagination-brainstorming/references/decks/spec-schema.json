@@ -1,9 +1,24 @@
 {
   "deck": "spec-schema",
   "version": "0.1.1",
-  "note": "What spec_gate.py enforces on concept.json and the written spec. The gate cannot judge whether a concept is good, and it does not pretend to: what it proves is that the work which makes a concept usable - premises tested, instincts burned with the user's agreement, three genuinely different approaches, a stated refusal, named neighbours, honest open questions - was not skipped, and that the finished spec exists and does not restate the very skeleton the session banned.",
-  "placeholder_markers": ["tbd", "todo", "tbc", "fixme", "xxx", "lorem ipsum", "to be determined", "placeholder", "???"],
-  "question_marks": ["?", "？", "؟", "¿"],
+  "note": "What spec_gate.py enforces on concept.json and the written spec. The gate cannot judge whether a concept is good, and it does not pretend to: what it proves is that the work which makes a concept usable - premises tested, instincts burned with the user's agreement, three genuinely different approaches, a stated refusal, named neighbours, honest open questions - was not skipped, and that the finished spec exists, contains the concept it specifies, and does not restate the very skeleton the session banned. The passage threshold is calibrated on real drafts: a reworded but present passage scored 0.42 and a wholesale replacement scored 0.00, so 0.35 separates rewriting from removing without forcing an author to copy the sidecar verbatim.",
+  "placeholder_markers": [
+    "tbd",
+    "todo",
+    "tbc",
+    "fixme",
+    "xxx",
+    "lorem ipsum",
+    "to be determined",
+    "placeholder",
+    "???"
+  ],
+  "question_marks": [
+    "?",
+    "？",
+    "؟",
+    "¿"
+  ],
   "counts": {
     "min_premises": 3,
     "min_premises_broken": 1,
@@ -35,20 +50,55 @@
   "thresholds": {
     "min_distinct_ratio": 0.3,
     "max_skeleton_overlap": 0.6,
-    "max_field_similarity": 0.85
+    "max_field_similarity": 0.85,
+    "min_passage_coverage": 0.35
   },
   "required_markdown_sections": [
-    { "id": "brief", "note": "What was asked for, in the user's words plus what you learned it actually is." },
-    { "id": "premises", "note": "The premises found and which were deleted or inverted." },
-    { "id": "banlist", "note": "The shared ban contract: model instincts, the skeleton, and the user's own additions." },
-    { "id": "approaches", "note": "All three, described in comparable detail - including the one that was not chosen." },
-    { "id": "concept", "note": "The chosen concept, its mechanism, and what it forbids." },
-    { "id": "first-use", "note": "One concrete scene of first contact." },
-    { "id": "neighbours", "note": "Nearest existing things and how this differs." },
-    { "id": "open-questions", "note": "What is still unresolved, stated plainly." },
-    { "id": "decisions", "note": "Decision log: what was decided, when, and why." },
-    { "id": "handoff", "note": "What happens next and what this spec does not cover." }
+    {
+      "id": "brief",
+      "note": "What was asked for, in the user's words plus what you learned it actually is."
+    },
+    {
+      "id": "premises",
+      "note": "The premises found and which were deleted or inverted."
+    },
+    {
+      "id": "banlist",
+      "note": "The shared ban contract: model instincts, the skeleton, and the user's own additions."
+    },
+    {
+      "id": "approaches",
+      "note": "All three, described in comparable detail - including the one that was not chosen."
+    },
+    {
+      "id": "concept",
+      "note": "The chosen concept, its mechanism, and what it forbids."
+    },
+    {
+      "id": "first-use",
+      "note": "One concrete scene of first contact."
+    },
+    {
+      "id": "neighbours",
+      "note": "Nearest existing things and how this differs."
+    },
+    {
+      "id": "open-questions",
+      "note": "What is still unresolved, stated plainly."
+    },
+    {
+      "id": "decisions",
+      "note": "Decision log: what was decided, when, and why."
+    },
+    {
+      "id": "handoff",
+      "note": "What happens next and what this spec does not cover."
+    }
   ],
   "sections_must_be_in_order": true,
-  "handoff_targets": ["writing-plans", "imagination-engine", "stop"]
+  "handoff_targets": [
+    "writing-plans",
+    "imagination-engine",
+    "stop"
+  ]
 }

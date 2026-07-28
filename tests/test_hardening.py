@@ -329,3 +329,41 @@ def test_usage_errors_are_not_reported_as_failed_gates(run):
     for script in ("spec_gate.py", "divergence_check.py", "deal.py", "banlist.py", "cliche_lint.py"):
         res = run(script, "--nonsense")
         assert res.code == 1, f"{script} returned {res.code} for a usage error"
+
+
+# ===========================================================================
+# Third round, found by using the skill on a real Korean brief: the binding
+# between the written spec and its sidecar passed on token overlap alone.
+# ===========================================================================
+
+def test_token_overlap_is_not_containment():
+    """In a long spec the words of any one paragraph are scattered through the
+    rest, so a bag-of-tokens score passes even when the paragraph was replaced."""
+    from engine import coverage, passage_coverage  # noqa: PLC0415
+
+    passage = ("근거 레코드에 없는 사실과 숫자를 문장에 만들어 넣는 일을 금지한다. "
+               "숨겨진 가중치와 설명할 수 없는 종합점수를 금지한다.")
+    scattered = ("이 문서는 근거와 레코드를 다룬다. 숫자와 사실은 문장에서 확인된다. "
+                 "가중치는 숨겨지지 않으며 종합점수는 설명할 수 있어야 한다. 금지 사항은 따로 있다.")
+    assert coverage(passage, scattered) > 0.5, "the old check would have passed this"
+    assert passage_coverage(passage, scattered) < 0.5, "the passage is not actually present"
+    assert passage_coverage(passage, "머리말. " + passage + " 꼬리말.") == 1.0
+
+
+def test_a_spec_missing_the_refusal_fails(gate, concept_path, example, tmp_path, spec_md):
+    """Swap the whole concept section for unrelated prose: the refusal is gone
+    from the document while every other binding is untouched."""
+    import re as _re  # noqa: PLC0415
+    from pathlib import Path as _Path  # noqa: PLC0415
+
+    spec = _Path(spec_md).read_text(encoding="utf-8")
+    marks = list(_re.finditer(r"<!--\s*section:\s*([\w-]+)\s*-->", spec, _re.IGNORECASE))
+    start = next(m for m in marks if m.group(1) == "concept")
+    end = next(m for m in marks if m.start() > start.start())
+    filler = ("The team reviewed the ward rota and the existing paperwork over several weeks and agreed "
+              "that the arrangement suits the unit as it currently stands. " * 3)
+    md = tmp_path / "swapped.md"
+    md.write_text(spec[:start.end()] + "\n" + filler + "\n\n" + spec[end.start():], encoding="utf-8")
+    res = gate(concept_path(example), "--markdown", str(md), "--json")
+    assert res.code == 2
+    assert any("does not contain chosen.forbids" in f for f in res.json()["failures"])

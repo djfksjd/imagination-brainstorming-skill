@@ -205,6 +205,25 @@ def coverage(needle: str, haystack: str) -> float:
     return len(tn & th) / len(tn)
 
 
+def passage_coverage(needle: str, haystack: str, window: int = 24, step: int = 12) -> float:
+    """How much of `needle` appears in `haystack` as contiguous passages.
+
+    Token containment is not enough to ask "does this document contain this
+    passage": in a long, thorough spec the words of any one paragraph are
+    scattered through the others, so a bag-of-tokens score passes even when the
+    paragraph was replaced wholesale. Overlapping character windows ask the
+    question that was meant - is this text actually in there - and work the same
+    way in every script.
+    """
+    a, b = normalize(needle), normalize(haystack)
+    if not a or not b:
+        return 0.0
+    if len(a) <= window:
+        return 1.0 if a in b else 0.0
+    windows = [a[i:i + window] for i in range(0, len(a) - window + 1, step)]
+    return sum(1 for w in windows if w in b) / len(windows)
+
+
 def distinct_ratio(text: str) -> float:
     """Share of distinct tokens in a text. Padding a field to its character
     minimum with a repeated word or a run of the same letter scores near zero;
