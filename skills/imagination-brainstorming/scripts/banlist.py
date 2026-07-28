@@ -11,7 +11,13 @@ presented as a list of exclusions, never as a menu of suggestions.
 
 Short entries (<= 6 words) become matchable bans. Longer ones are kept as
 manual reminders, because matching a fifteen-word sentence literally would
-catch nothing while pretending to protect something.
+catch nothing while pretending to protect something. Where the split falls
+depends on the subject: a product instinct is a three-word noun phrase and
+becomes a ban, while a story, ritual or mechanic instinct is naturally a
+clause and becomes a reminder. Only the user's reminders require a written
+answer at the gate - see spec_gate.py, which used to require one for every
+reminder and so charged a narrative brief twelve notes that no instruction
+had asked for.
 
 Usage:
   banlist.py --brief "..." --instincts instincts.txt --skeleton "..." \
@@ -182,9 +188,12 @@ def render_human(payload: dict[str, Any]) -> str:
         lines.append("      while user_confirmed is false, so an unsigned contract cannot reach a spec.")
     if payload["manual_checks"]:
         lines.append("")
-        lines.append("MANUAL CHECKS (grep cannot help here - reread the spec against these):")
+        lines.append("MANUAL CHECKS (grep cannot help here - reread the spec against these).")
+        lines.append("The user's need a written answer in banlist_contract.manual_checks_cleared;")
+        lines.append("your own long instincts are a reread, and the gate says so rather than failing.")
         for m in payload["manual_checks"]:
-            lines.append(f"  - [{m['source']}] {m['statement']}")
+            owner = "user - answer in writing" if m["source"] == "user" else "yours - reread"
+            lines.append(f"  - [{owner}] {m['statement']}")
     lines.append("")
     lines.append("FORBIDDEN MOVES:")
     for m in payload["forbidden_moves"]:

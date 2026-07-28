@@ -313,3 +313,66 @@ def test_a_sidecar_that_records_no_brief_is_refused(run, tmp_path, references, b
               "--banlist", str(banlist), "--json")
     assert res.code == 2
     assert any("banlist_contract.brief: missing" in f for f in res.json()["failures"])
+
+
+# --- who has to write a manual-check note ----------------------------------
+#
+# The rule was "every long entry", which made every model instinct longer than
+# six words a mandatory written note. SKILL.md, concept-template.md and the
+# shipped example all say only the user's exclusions need one, and the shipped
+# product example carries zero model instincts in manual_checks while a
+# narrative brief produces twelve - product instincts are short noun phrases
+# and story instincts are clauses. The instructions describe the design; the
+# rule was the thing that disagreed with them.
+
+
+def long_instincts(n: int = 12) -> list[str]:
+    return [
+        f"a village that sacrifices one child a year to the thing in the woods, told for the {i}th time"
+        for i in range(1, n + 1)
+    ]
+
+
+@pytest.fixture
+def narrative_contract(run, tmp_path: Path, skeleton: str):
+    """A contract whose model instincts are all clauses, as they are outside a
+    product brief."""
+    instincts = tmp_path / "narrative.txt"
+    instincts.write_text("\n".join(long_instincts()) + "\n", encoding="utf-8")
+    user = tmp_path / "user.txt"
+    user.write_text("nothing that adds screen time at the bedside\n", encoding="utf-8")
+    res = run("banlist.py", "--brief", "a way for our ward to hand over shifts",
+              "--instincts", str(instincts), "--user", str(user), "--skeleton", skeleton,
+              "--confirmed", "--out", str(tmp_path / "narrative"))
+    assert res.code == 0, res
+    return tmp_path / "narrative" / "banlist.json"
+
+
+def gate_narrative(run, tmp_path, references, example, contract, cleared):
+    concept = deepcopy(example)
+    concept["banlist_contract"]["model_instincts"] = long_instincts()
+    concept["banlist_contract"]["user_exclusions"] = ["nothing that adds screen time at the bedside"]
+    concept["banlist_contract"]["manual_checks_cleared"] = cleared
+    path = tmp_path / "narrative-concept.json"
+    path.write_text(json.dumps(concept, ensure_ascii=False), encoding="utf-8")
+    return run("spec_gate.py", "--concept", str(path),
+               "--markdown", str(references / "example-concept.md"),
+               "--banlist", str(contract), "--json")
+
+
+def test_long_model_instincts_are_a_warning_not_twelve_failures(run, tmp_path, references, example,
+                                                                narrative_contract):
+    cleared = [{"id": "user-01", "note": "No screen is added at the bedside; the ward's paper board carries it."}]
+    res = gate_narrative(run, tmp_path, references, example, narrative_contract, cleared)
+    assert res.code == 0, res.out
+    verdict = res.json()
+    assert not any("instinct-" in f for f in verdict["failures"]), verdict["failures"]
+    assert any("long instincts" in w and "reread rather than a failure" in w for w in verdict["warnings"])
+
+
+def test_the_users_own_long_exclusion_is_still_required(run, tmp_path, references, example,
+                                                        narrative_contract):
+    res = gate_narrative(run, tmp_path, references, example, narrative_contract, [])
+    assert res.code == 2, res.out
+    assert any("user-01" in f and "no note saying how the concept avoids it" in f
+               for f in res.json()["failures"])

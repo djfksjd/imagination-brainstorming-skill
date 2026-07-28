@@ -102,9 +102,11 @@ def main(argv: list[str] | None = None) -> int:
         for f in warns:
             print(f"WARN  line {f['line']}: {f['match']!r} [{f['id']}] - {f['excerpt']}")
         if manual:
-            print("\nMANUAL CHECKS (not machine-checkable - reread the draft against these):")
+            print("\nMANUAL CHECKS (not machine-checkable - reread the draft against these).")
+            print("The user's need a written answer at the gate; your own long instincts are a reread.")
             for m in manual:
-                print(f"  - [{m.get('source', '?')}] {m.get('statement', '')}")
+                owner = "user - answer in writing" if m.get("source") == "user" else "yours - reread"
+                print(f"  - [{owner}] {m.get('statement', '')}")
         print(f"\n{len(bans)} banned, {len(warns)} warnings, {len(manual)} manual checks.")
         if failed:
             print("FAILED: rewrite the flagged lines. Deleting the word is not a fix - "

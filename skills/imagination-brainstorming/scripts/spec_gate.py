@@ -634,16 +634,41 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             for entry in cleared:
                 if isinstance(entry, dict) and text_of(entry.get("id")):
                     cleared_map[text_of(entry.get("id"))] = text_of(entry.get("note"))
+        # A written note is required for the *user's* long exclusions, which is
+        # what SKILL.md, the template and the shipped example all say. It used
+        # to be required for every long entry, model instincts included, and
+        # that was invisible in a product brief and unavoidable outside one: a
+        # product instinct is a three-word noun phrase and becomes a matchable
+        # ban, while a story, ritual or mechanic instinct is naturally a clause
+        # and became a manual check. The shipped product example carries zero
+        # of them; a narrative brief produced twelve, so a user on such a brief
+        # met twelve mandatory notes no document had told them about. The rule
+        # was the thing that disagreed with every instruction, so the rule
+        # changed. The model's long instincts are still carried in the
+        # contract, still replayed, and now listed as a warning to reread the
+        # spec against - what the skeleton check and a reader are for.
+        unanswered_model: list[str] = []
         for m in manual:
             mid = text_of(m.get("id"))
             note = cleared_map.get(mid, "")
             check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
-            if text_units(note) < mins["manual_check_note"]:
-                failures.append(
-                    f"banlist_contract.manual_checks_cleared: exclusion '{mid}' "
-                    f"({text_of(m.get('statement'))[:60]}...) has no note saying how the concept avoids it. "
-                    "Long exclusions cannot be matched mechanically, so they are answered here or not at all."
-                )
+            if text_units(note) >= mins["manual_check_note"]:
+                continue
+            if text_of(m.get("source")) == "model":
+                unanswered_model.append(f"{mid} ({text_of(m.get('statement'))[:50]})")
+                continue
+            failures.append(
+                f"banlist_contract.manual_checks_cleared: exclusion '{mid}' "
+                f"({text_of(m.get('statement'))[:60]}...) has no note saying how the concept avoids it. "
+                "Long exclusions cannot be matched mechanically, so they are answered here or not at all."
+            )
+        if unanswered_model:
+            warnings.append(
+                f"{len(unanswered_model)} of your own long instincts are too long to match literally and "
+                f"carry no written answer ({'; '.join(unanswered_model[:3])}...). Only the user's "
+                "exclusions require one, so this is a reread rather than a failure: check the concept "
+                "against them yourself, because nothing mechanical is checking them"
+            )
 
     markers = schema["placeholder_markers"]
     for path, value in walk_strings(concept):
