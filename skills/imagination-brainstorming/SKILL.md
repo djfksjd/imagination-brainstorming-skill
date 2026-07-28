@@ -75,6 +75,8 @@ difference between trusting the gate and being puzzled by it.
 - **A banned adjective can be ordinary vocabulary.** In fiction *magical* and
   *delightful* denote rather than claim. Mark that use with
   `<!-- mention: hollow-magical -->` (see stage 6) rather than editing the deck.
+  One id, one paragraph, and a denial or a quotation inside it; a first
+  instinct and a user exclusion cannot be marked at all.
 
 Two consequences worth expecting rather than discovering: more of your first
 instincts will be clauses rather than noun phrases, so more of them land in the
@@ -321,11 +323,25 @@ region is not magical" was refused for saying so. Mark that span in place:
 ```
 
 The release covers that span and that rule id only; everything outside it, and
-every other rule inside it, is linted as before. An unknown or unnamed id is
-refused, and every mention is printed in the verdict. This cannot verify that
-the word is really mentioned rather than used - a regex cannot tell an
-assertion from a quotation, which is the whole reason the marker exists. It
-makes the claim explicit, local and reviewable instead of leaving a blanket
+every other rule inside it, is linted as before. What a marker may do is
+bounded, because one marker naming every id and wrapping a whole document
+released the entire contract and exited 0:
+
+- one rule id per marker, and at most five markers in a document;
+- one paragraph per span, at most 200 units - mark the phrase being quoted, not
+  the passage around it;
+- the span has to deny or quote: a denial in any of the eight languages this
+  skill documents, or the phrase in double quotation marks. In another language,
+  quote it;
+- a first instinct and a user exclusion cannot be released by a marker, by the
+  ban list's `allowed` field, or by anything else the artefact under judgement
+  says. Only ids from the bundled cliche deck can be released at all.
+
+An unknown or unnamed id is refused, and every mention is printed in the
+verdict. This cannot verify that the word is really mentioned rather than used -
+a regex cannot tell an assertion from a quotation, which is the whole reason the
+marker exists, and the denial cue narrows that gap without closing it. It makes
+the claim explicit, local, bounded and reviewable instead of leaving a blanket
 release as the only escape.
 
 There is no `--allow` on this gate or on `divergence_check.py`, and the gate
@@ -340,7 +356,18 @@ gate means changing `references/decks/cliches.json`, where the change is
 reviewed outside the session that wants it. Bundled entries and structural
 patterns also win on id: a supplied rule carrying a bundled id is dropped
 rather than merged, so the deck cannot be demoted or neutered by the file
-under judgement.
+under judgement. `divergence_check.py --banlist` lints the deck first for the
+same reason: linting only the supplied entries made a hand-written ban list a
+hand-written lint at stage 3. A phrase the sidecar says was burned must be
+present at ban tier as well as present: `warn` never fails and `manual` is not
+matched at all, so re-tiering one removed it from the verdict while leaving it
+in the file.
+
+Whether a long exclusion is the user's is read from the sidecar's own instinct
+list, not from the `source` field of the ban list - that field is written by
+the same caller, and setting it to `model` turned every one of the user's
+exclusions into a warning. A statement matching no recorded instinct counts as
+the user's.
 
 Two of the user's long exclusions may not share an id, and neither may two of
 the answers to them, because the gate joins answer to exclusion by that id and

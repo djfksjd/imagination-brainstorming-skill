@@ -121,6 +121,84 @@ def test_the_gate_refuses_an_unknown_id(run, references, banlist, spec_with):
     assert any("unknown rule id" in f for f in res.json()["failures"])
 
 
+# --- what a marker may not reach ------------------------------------------
+#
+# Each bound below closes a way one marker becomes a general release. Before
+# they existed, a single marker naming every id and wrapping the whole document
+# released all 55 rules of the shipped contract - the twelve burnt instincts and
+# the user's own exclusion included - and the gate exited 0.
+
+
+def test_one_marker_releases_one_id(run, draft, banlist):
+    text = "<!-- mention: hollow-magical, hollow-delightful -->not magical, not delightful<!-- /mention -->"
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 1
+    assert "names 2 rule ids" in res.err
+
+
+def test_a_span_longer_than_the_cap_is_refused(run, draft, banlist):
+    body = "not magical. " + ("the ward passes the record along at the end of a shift. " * 10)
+    res = run("cliche_lint.py", "--draft", draft(f"<!-- mention: hollow-magical -->{body}<!-- /mention -->"),
+              "--banlist", str(banlist))
+    assert res.code == 1
+    assert "the limit is 200" in res.err
+
+
+def test_a_span_crossing_a_blank_line_is_refused(run, draft, banlist):
+    text = "<!-- mention: hollow-magical -->not magical\n\nand the rest of the spec<!-- /mention -->"
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 1
+    assert "crosses a blank line" in res.err
+
+
+def test_a_span_that_denies_nothing_is_refused(run, draft, banlist):
+    """The marker claims the word is mentioned rather than used; the span has to
+    show the denial or the quotation. This narrows - it cannot prove one."""
+    text = "<!-- mention: hollow-magical -->The region is magical<!-- /mention -->"
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 1
+    assert "no denial or quotation" in res.err
+
+
+def test_a_quoted_span_counts_as_a_mention(run, draft, banlist):
+    text = '<!-- mention: hollow-magical -->The brief asked for something "magical"<!-- /mention -->'
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 0, res.out
+
+
+def test_a_denial_in_another_language_counts(run, draft, banlist):
+    """The cue list covers the languages this repository documents and the
+    double quotation marks; the skill runs in any language, so this pins that a
+    non-English denial is not refused for being non-English."""
+    for text in ('<!-- mention: hollow-magical -->이 지역은 magical 하지 않다<!-- /mention -->',
+                 '<!-- mention: hollow-magical -->La région n\'est pas magical<!-- /mention -->'):
+        res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+        assert res.code == 0, res.out
+
+
+def test_more_markers_than_the_cap_are_refused(run, draft, banlist):
+    text = "\n\n".join(["<!-- mention: hollow-magical -->not magical<!-- /mention -->"] * 6)
+    res = run("cliche_lint.py", "--draft", draft(text), "--banlist", str(banlist))
+    assert res.code == 1
+    assert "at most 5 are allowed" in res.err
+
+
+def test_the_gate_refuses_a_marker_naming_an_instinct(run, references, banlist, spec_with):
+    marked = "<!-- mention: instinct-01 -->not a handover app with structured form<!-- /mention -->"
+    res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
+              "--markdown", spec_with(marked), "--banlist", str(banlist), "--json")
+    assert res.code == 2
+    assert any("nothing the spec says can release" in f for f in res.json()["failures"])
+
+
+def test_the_gate_refuses_a_marker_naming_a_user_exclusion(run, references, banlist, spec_with):
+    marked = "<!-- mention: user-02 -->not no scoring or ranking of nurses<!-- /mention -->"
+    res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
+              "--markdown", spec_with(marked), "--banlist", str(banlist), "--json")
+    assert res.code == 2
+    assert any("nothing the spec says can release" in f for f in res.json()["failures"])
+
+
 def test_a_mention_does_not_release_the_sidecar_elsewhere(run, references, banlist, spec_with, concept_path, example):
     """The markdown's spans apply to concept.json only where the same words
     appear - a marked denial in the spec cannot license a claim in the sidecar."""

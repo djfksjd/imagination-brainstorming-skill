@@ -34,8 +34,9 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
-        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text, normalize,
-        read_json_arg, require_mapping, strip_mention_markers, text_units,
+        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text,
+        mention_bound_failures, normalize, read_json_arg, releasable_ids, require_mapping,
+        strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
     from banlist import classify as classify_exclusions  # type: ignore
@@ -44,8 +45,9 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
-        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text, normalize,
-        read_json_arg, require_mapping, strip_mention_markers, text_units,
+        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text,
+        mention_bound_failures, normalize, read_json_arg, releasable_ids, require_mapping,
+        strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
     from banlist import classify as classify_exclusions  # type: ignore
@@ -185,6 +187,25 @@ def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
     classify_exclusions(instincts, "instinct", "first-instinct", "model", expected_entries, expected_manual)
     classify_exclusions(exclusions, "user", "user-exclusion", "user", expected_entries, expected_manual)
 
+    # A phrase present at 'warn' or 'manual' tier is a deletion with the entry
+    # left in place: `warn` never fails the gate and `manual` is skipped by the
+    # lint entirely, so the sidecar's own instincts passed through both.
+    supplied_tiers: dict[str, set[str]] = {}
+    for e in supplied_entries:
+        supplied_tiers.setdefault(normalize(e.get("phrase", "")), set()).add(str(e.get("tier")))
+    retiered = [
+        e["phrase"] for e in expected_entries
+        if normalize(e["phrase"]) in supplied_phrases
+        and "ban" not in supplied_tiers.get(normalize(e["phrase"]), set())
+    ]
+    if retiered:
+        failures.append(
+            f"{len(retiered)} phrase(s) the sidecar says were burned are in the ban list below ban tier "
+            f"({', '.join(retiered[:3])}...) - a burnt instinct and a user exclusion are bans, and "
+            "re-tiering one to 'warn' or 'manual' removes it from the verdict without removing it from "
+            "the file"
+        )
+
     missing_bans = [e["phrase"] for e in expected_entries if normalize(e["phrase"]) not in supplied_phrases]
     if missing_bans:
         failures.append(
@@ -202,8 +223,12 @@ def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
 
     # `allowed` is read here for one purpose only: to say why a bundled entry is
     # absent from the file. It grants nothing at lint time - see lint_entries.
-    # An instinct or a user exclusion is not releasable at all: those are checked
-    # above by phrase, and a release naming one is refused below as unknown.
+    # An instinct or a user exclusion is not releasable by anything the artefact
+    # says, and that is enforced rather than asserted: `releasable_ids()` in
+    # engine.py holds every release, whatever route it arrives by, to the
+    # bundled deck, and a mention marker naming one is refused by
+    # `mention_bound_failures`. This comment used to say the same thing while a
+    # mention marker released both.
     deck = deck_lint_entries(cliches)
     known_ids = {e["id"] for e in deck}
     allowed = banlist.get("allowed", [])
@@ -678,6 +703,17 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         # changed. The model's long instincts are still carried in the
         # contract, still replayed, and now listed as a warning to reread the
         # spec against - what the skeleton check and a reader are for.
+        # Whose exclusion this is comes from the sidecar's own instinct list, not
+        # from the `source` field of the ban list. That field is written by the
+        # caller too, and flipping it from "user" to "model" turned both of the
+        # shipped example's user exclusions from a required answer into a
+        # warning, with no note written and exit 0. A statement that matches no
+        # recorded instinct is treated as the user's: the failure mode of
+        # guessing wrong is an answer the author did not have to write.
+        model_statements = {
+            normalize(v) for v in (contract.get("model_instincts") or [])
+            if isinstance(contract, dict) and isinstance(v, str)
+        }
         unanswered_model: list[str] = []
         for m in manual:
             mid = text_of(m.get("id"))
@@ -685,7 +721,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
             if text_units(note) >= mins["manual_check_note"]:
                 continue
-            if text_of(m.get("source")) == "model":
+            if normalize(text_of(m.get("statement"))) in model_statements:
                 unanswered_model.append(f"{mid} ({text_of(m.get('statement'))[:50]})")
                 continue
             failures.append(
@@ -895,6 +931,8 @@ def main(argv: list[str] | None = None) -> int:
         patterns = lint_patterns(banlist, cliches)
         mentions = extract_mentions(markdown)
         result["failures"].extend(check_mentions(mentions, entries, patterns))
+        known_ids = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
+        result["failures"].extend(mention_bound_failures(mentions, known_ids))
         result["warnings"].extend(describe_mentions(mentions))
         blob = "\n".join(
             v for path, v in walk_strings(concept) if not path.startswith("banlist_contract")

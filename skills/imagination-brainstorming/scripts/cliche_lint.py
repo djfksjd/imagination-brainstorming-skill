@@ -27,14 +27,16 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
-        load_banlist, load_deck, lint_text, read_text_arg, strip_mention_markers,
+        load_banlist, load_deck, lint_text, mention_bound_failures, read_text_arg,
+        strip_mention_markers,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
-        load_banlist, load_deck, lint_text, read_text_arg, strip_mention_markers,
+        load_banlist, load_deck, lint_text, mention_bound_failures, read_text_arg,
+        strip_mention_markers,
     )
 
 FAIL_CODE = 3
@@ -78,6 +80,9 @@ def main(argv: list[str] | None = None) -> int:
                     f"a mention block names {'no rule id' if not ids else 'unknown rule id(s) ' + ', '.join(unknown)} "
                     f"({body.strip()[:60]}...). Mark the span with the id printed in square brackets by this lint"
                 )
+        bound_failures = mention_bound_failures(mentions, known)
+        if bound_failures:
+            raise EngineError(bound_failures[0])
         findings = lint_text(strip_mention_markers(draft), entries, patterns,
                              set(csv_list(args.allow)), mentions)
     except EngineError as exc:

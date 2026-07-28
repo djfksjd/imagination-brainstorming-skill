@@ -30,15 +30,15 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, die, distinct_ratio, jaccard, load_banlist, load_deck,
-        lint_text, normalize, read_json_arg, text_units,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, distinct_ratio, jaccard,
+        load_banlist, load_deck, lint_text, normalize, read_json_arg, text_units,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, die, distinct_ratio, jaccard, load_banlist, load_deck,
-        lint_text, normalize, read_json_arg, text_units,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, distinct_ratio, jaccard,
+        load_banlist, load_deck, lint_text, normalize, read_json_arg, text_units,
     )
 
 FAIL_CODE = 3
@@ -273,10 +273,24 @@ def main(argv: list[str] | None = None) -> int:
             blob = "\n".join(
                 f"{a.get('summary', '')}\n{a.get('failure_mode', '')}" for a in approaches
             )
-            lint_findings = lint_text(
-                blob, banlist.get("entries", []), banlist.get("structural_patterns", []),
-                set(),
-            )
+            # Deck first, as at the gate. Linting the supplied entries alone
+            # made a shortened ban list a shortened lint at this stage: the
+            # bundled cliches are added here and a supplied entry can only add
+            # to them.
+            deck = load_deck("cliches")
+            entries = deck_lint_entries(deck)
+            reserved = {e["id"] for e in entries}
+            entries += [
+                e for e in banlist.get("entries", [])
+                if isinstance(e, dict) and e.get("id") not in reserved
+            ]
+            patterns = list(deck["structural_patterns"])
+            seen = {str(p.get("id")) for p in patterns}
+            patterns += [
+                p for p in banlist.get("structural_patterns", [])
+                if isinstance(p, dict) and str(p.get("id")) not in seen
+            ]
+            lint_findings = lint_text(blob, entries, patterns, set())
             banned = [f for f in lint_findings if f["tier"] == "ban"]
             if banned:
                 verdict["failures"].append(

@@ -178,3 +178,18 @@ def test_the_check_says_what_frame_fit_cannot_establish(run, references):
     res = run("divergence_check.py", "--approaches", str(references / "example-approaches.json"), "--json")
     assert res.code == 0, res.out
     assert any("cannot check that it is true" in w for w in res.json()["warnings"])
+
+
+def test_a_short_ban_list_is_not_a_short_lint_here(run, tmp_path, approaches):
+    """This stage linted the supplied entries alone, so a hand-written ban list
+    naming one irrelevant phrase let every bundled cliche through. The deck goes
+    in first here as it does at the gate."""
+    approaches[0]["summary"] = approaches[0]["summary"] + " It is a one-stop shop for the ward."
+    short = tmp_path / "short.json"
+    short.write_text(json.dumps({
+        "entries": [{"id": "extra-01", "phrase": "something else entirely", "tier": "ban"}],
+    }), encoding="utf-8")
+    res = run("divergence_check.py", "--approaches", write(tmp_path, approaches),
+              "--banlist", str(short), "--json")
+    assert res.code == 3
+    assert any("one-stop shop" in f for f in res.json()["failures"])

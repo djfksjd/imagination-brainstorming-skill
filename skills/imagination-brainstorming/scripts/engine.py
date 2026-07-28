@@ -516,6 +516,123 @@ def extract_mentions(text: str) -> list[tuple[str, set[str]]]:
     return out
 
 
+# A marked span is an unverifiable claim by the party being judged, so what it
+# can reach is bounded here rather than left to the author's restraint. One
+# marker naming every id and wrapping the whole document released all 55 rules
+# of a shipped contract, including the twelve burnt instincts and the user's own
+# exclusions, and exited 0.
+MENTION_MAX_IDS = 1
+MENTION_MAX_UNITS = 200
+MENTION_MAX_MARKERS = 5
+
+# Evidence that the span denies or quotes the word rather than using it. This is
+# a narrowing, not a proof: a regex cannot tell an assertion from a quotation,
+# which is why the marker exists at all. The cue list covers the eight languages
+# this repository ships documentation in and the double-quotation marks in
+# common use; in any other language, quote the phrase. The plain apostrophe is
+# deliberately not a cue - "don't" is not a quotation.
+NEGATION_CUE = re.compile(
+    r"\b(?:not|no|never|nor|without|neither|cannot|rather\s+than|instead\s+of"
+    r"|nicht|kein\w*|nie|niemals|ohne"
+    r"|ni|sin|nunca|tampoco"
+    r"|ne|pas|aucun\w*|jamais|sans"
+    r"|nao|nem|sem)\b"
+    r"|(?:is|are|does|do|did|was|were|ca|wo|could|should|would)n['’]t\b"
+    r"|n[aã]o"
+    r"|[\"“”„‟«»‹›「」『』`]"
+    r"|아니|않|없|말고"
+    r"|ない|ません|なく|ではな|じゃな"
+    r"|不|沒|没|無|无|非",
+    re.IGNORECASE,
+)
+
+
+def mention_bound_failures(mentions: list[tuple[str, set[str]]], known_ids: set[str]) -> list[str]:
+    """What a mention marker may not do, checked before any release is honoured.
+
+    Each bound closes a way one marker becomes a general release:
+
+    * one id per marker - a list of ids in one marker is a release of the whole
+      contract wearing the syntax of a single quotation;
+    * a span of at most `MENTION_MAX_UNITS` units and no blank line - a marker
+      that wraps the whole document releases everything the document says;
+    * a cue that the span denies or quotes - a span that negates nothing is a
+      use of the word, whatever the marker asserts;
+    * at most `MENTION_MAX_MARKERS` markers in one document - the bounds above
+      are per span, and enough spans reassemble the general release; a spec that
+      needs to quote more banned words than that has the wrong ban list;
+    * an id no marker may name at all, checked by the caller against
+      `releasable_ids()` - the instincts and the user's exclusions.
+
+    None of this checks the author's claim. It bounds what the claim can reach.
+    """
+    failures: list[str] = []
+    if len(mentions) > MENTION_MAX_MARKERS:
+        failures.append(
+            f"{len(mentions)} mention markers, at most {MENTION_MAX_MARKERS} are allowed - each one is a "
+            "release the gate cannot verify, and enough of them are a release of the whole contract"
+        )
+    releasable = releasable_ids()
+    for body, ids in mentions:
+        excerpt = body.strip()[:60]
+        if len(ids) > MENTION_MAX_IDS:
+            failures.append(
+                f"a mention block names {len(ids)} rule ids ({', '.join(sorted(ids)[:4])}...) - one marker "
+                f"releases one id, so mark each quoted phrase in its own span ({excerpt}...)"
+            )
+        blocked = sorted(i for i in ids if i in known_ids and i not in releasable)
+        if blocked:
+            failures.append(
+                f"a mention block names {', '.join(blocked)}, which nothing the spec says can release - a "
+                "first instinct and one of the user's own exclusions are exempted by the user, not by the "
+                f"document under judgement ({excerpt}...)"
+            )
+        units = text_units(body)
+        if units > MENTION_MAX_UNITS:
+            failures.append(
+                f"a mention span is {units} units long, the limit is {MENTION_MAX_UNITS} - mark the phrase "
+                f"being quoted, not the passage around it ({excerpt}...)"
+            )
+        if re.search(r"\n[ \t]*\n", body):
+            failures.append(
+                f"a mention span crosses a blank line - one span is one paragraph, so that a marker cannot "
+                f"be opened at the top of a document and closed at the bottom ({excerpt}...)"
+            )
+        if not NEGATION_CUE.search(body):
+            failures.append(
+                f"a mention span contains no denial or quotation ({excerpt}...) - the marker claims the word "
+                "is mentioned rather than used, so the span has to show that: deny it, or put it in double "
+                "quotation marks"
+            )
+    return failures
+
+
+_RELEASABLE: frozenset[str] | None = None
+
+
+def releasable_ids() -> frozenset[str]:
+    """The only ids any release may name: the bundled deck's, and nothing else.
+
+    Deliberately not a parameter. Every release route so far - the ban list's
+    `allowed` field, and then mention markers - was a way for the artefact under
+    judgement to name what it wanted exempted, and each was closed one at a time
+    after it shipped. What the artefact contributes to the lint (the session's
+    instincts, the user's exclusions, `--extra` phrases) is therefore not
+    releasable by anything the artefact says, and no caller can widen this set,
+    because there is nothing to pass. Changing a bundled cliche means changing
+    the deck in the repository, where the change is reviewed outside the session
+    that wants it.
+    """
+    global _RELEASABLE
+    if _RELEASABLE is None:
+        deck = load_deck("cliches")
+        _RELEASABLE = frozenset(
+            {e["id"] for e in deck_lint_entries(deck)}
+            | {str(p.get("id")) for p in deck.get("structural_patterns", [])}
+        )
+    return _RELEASABLE
+
+
 def strip_mention_markers(text: str) -> str:
     """Remove the marker comments, keep what they wrap.
 
@@ -571,8 +688,14 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
     used; it makes the claim explicit, local to one span, and reviewable,
     instead of leaving the only escape a blanket release of the whole rule.
     """
-    allow = allow or set()
-    mentions = mentions or []
+    # One place where every release, present or future, is narrowed to the
+    # bundled deck. `allow` and `mentions` are the two routes that exist today
+    # and each of them was a general release before it was bounded; a third
+    # route added later arrives here too, and cannot exempt a burnt instinct or
+    # one of the user's exclusions without editing this function.
+    releasable = releasable_ids()
+    allow = {i for i in (allow or set()) if i in releasable}
+    mentions = [(body, ids & releasable) for body, ids in (mentions or [])]
     findings: list[dict[str, Any]] = []
     compiled = []
     for e in entries:
