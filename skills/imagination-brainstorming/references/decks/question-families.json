@@ -1,0 +1,139 @@
+{
+  "deck": "question-families",
+  "version": "0.1.0",
+  "note": "Question types for premise excavation. Ordinary requirements questions ('who is the user, what are the constraints, what does success look like') are premise-preserving: they refine the idea the person already has. Each family here is designed to expose something the brief takes for granted. Ask one at a time, in the user's language, phrased for their actual brief - never paste a template phrasing verbatim.",
+  "families": [
+    {
+      "id": "unstated-premise",
+      "label": "The premise nobody states",
+      "purpose": "Surface the assumption so basic that neither of you has said it out loud.",
+      "prompts": [
+        "Everything in this brief assumes {X} is a single thing that exists in one place. Is that actually required, or just how it has always been done?",
+        "What has to be true about the world for this to make sense at all?"
+      ],
+      "listens_for": "Hesitation, or an answer that starts with 'well, obviously'. That is the load-bearing premise.",
+      "anti_pattern": "Asking what the requirements are. Requirements sit on top of premises; you want the layer underneath."
+    },
+    {
+      "id": "forbidden-zone",
+      "label": "The version you would hate",
+      "purpose": "Get the user's own ban list before they see yours.",
+      "prompts": [
+        "Describe the version of this that you would be embarrassed to show anyone. What makes it embarrassing?",
+        "If someone else shipped this next month and you rolled your eyes, what would they have built?"
+      ],
+      "listens_for": "Specific names and concrete features, not adjectives. Push until you get one you could recognize on sight.",
+      "anti_pattern": "Asking what they want to avoid in the abstract. 'Nothing generic' is not usable; 'not another dashboard with three KPI cards' is."
+    },
+    {
+      "id": "success-redefinition",
+      "label": "Success under a different definition",
+      "purpose": "Break the metric the brief silently optimizes for.",
+      "prompts": [
+        "Suppose the number you would normally measure is unavailable forever. How would you know this worked?",
+        "What would make this a success for someone who never uses it?"
+      ],
+      "listens_for": "A second, more honest goal hiding behind the stated one.",
+      "anti_pattern": "Asking for KPIs. That confirms the existing metric instead of testing it."
+    },
+    {
+      "id": "constraint-inversion",
+      "label": "The constraint, inverted",
+      "purpose": "Test whether a limit is a fact or an inherited habit.",
+      "prompts": [
+        "You said {constraint}. What would this become if that were reversed rather than merely relaxed?",
+        "Which constraint here would you defend hardest, and what would this become if we spent one minute assuming it is wrong?"
+      ],
+      "listens_for": "Whether the answer changes the shape of the thing or only its size. Only shape counts.",
+      "anti_pattern": "Asking to remove constraints. Removal produces fantasy; inversion produces a different design."
+    },
+    {
+      "id": "non-user",
+      "label": "Who this is not for",
+      "purpose": "Find the people the concept is quietly addressed to, and the ones it acts on without asking.",
+      "prompts": [
+        "Who is affected by this without ever choosing to use it?",
+        "Who should look at this and correctly conclude it is not for them?"
+      ],
+      "listens_for": "'Everyone' means the audience has not been chosen. Keep going.",
+      "anti_pattern": "Asking for a target persona. That names a buyer, not a boundary."
+    },
+    {
+      "id": "must-remain-impossible",
+      "label": "What must stay impossible",
+      "purpose": "Every real design forbids something; a design that forbids nothing is a wish list.",
+      "prompts": [
+        "What should this make harder or outright impossible, on purpose?",
+        "What is the thing you never want a user of this to be able to do, even when they ask nicely?"
+      ],
+      "listens_for": "A real refusal with a cost attached. 'We'd never do anything bad' is not one.",
+      "anti_pattern": "Asking about non-goals. Non-goals are things you skipped; this is about things you actively prevent."
+    },
+    {
+      "id": "prior-attempts",
+      "label": "The graveyard",
+      "purpose": "Ground the work in what has already been tried and what killed it.",
+      "prompts": [
+        "Who has tried something in this neighbourhood, and what specifically killed it?",
+        "Have you tried a version of this before? What did you learn that you have not written down?"
+      ],
+      "listens_for": "Causes of death. If the same cause is still present, the new idea inherits it.",
+      "anti_pattern": "Asking about competitors. You want post-mortems, not a landscape."
+    },
+    {
+      "id": "cost-and-obligation",
+      "label": "What it commits people to",
+      "purpose": "Expose the ongoing duty the concept creates for someone.",
+      "prompts": [
+        "Once this exists, who has to keep doing something forever for it to keep working?",
+        "What does using this once oblige a person to do afterwards?"
+      ],
+      "listens_for": "Maintenance, moderation, refills, re-consent, apology paths. This is where concepts die quietly.",
+      "anti_pattern": "Asking about cost in money only. The expensive part is usually a recurring human duty."
+    },
+    {
+      "id": "adjacent-worlds",
+      "label": "Where this already exists under another name",
+      "purpose": "Find the domain that already solved the structure of this problem for other reasons.",
+      "prompts": [
+        "Outside your field entirely, who deals with this same structure - and what do they call it?",
+        "If a harbour master, a hospice nurse, or a tax office handled this, what would they already have in place?"
+      ],
+      "listens_for": "A borrowed mechanism with real detail attached, not a metaphor.",
+      "anti_pattern": "Asking for analogies. An analogy decorates; a borrowed mechanism does work."
+    },
+    {
+      "id": "terminal-state",
+      "label": "How it ends",
+      "purpose": "Design the end state, which is where most concepts are silently unfinished.",
+      "prompts": [
+        "What does this look like when it is finished, abandoned, or dead? Who cleans up?",
+        "How would someone leave this, and what do they take with them?"
+      ],
+      "listens_for": "Whether an ending exists at all. If nothing can end, nothing can be committed to.",
+      "anti_pattern": "Asking about the roadmap. A roadmap is growth; this is termination."
+    },
+    {
+      "id": "scale-break",
+      "label": "The scale where it breaks",
+      "purpose": "Locate the threshold at which the concept becomes a different thing.",
+      "prompts": [
+        "At a hundred times the size, what stops being true?",
+        "At a hundredth the size, what becomes pointless?"
+      ],
+      "listens_for": "A threshold with a number attached. That threshold is usually the real design boundary.",
+      "anti_pattern": "Asking whether it scales. That invites a yes."
+    },
+    {
+      "id": "boring-half",
+      "label": "The administrative half",
+      "purpose": "Force the paperwork, because extraordinary things become real when they become routine.",
+      "prompts": [
+        "What is the dullest recurring task this creates - the form, the queue, the monthly reconciliation?",
+        "Who has to sign off, and what do they need to see before they will?"
+      ],
+      "listens_for": "The first genuinely concrete detail of the concept. Often the best material in the session.",
+      "anti_pattern": "Skipping this because it is unglamorous. This family produces more usable specificity than any other."
+    }
+  ]
+}

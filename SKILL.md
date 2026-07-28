@@ -1,0 +1,1 @@
+skills/imagination-brainstorming/SKILL.md

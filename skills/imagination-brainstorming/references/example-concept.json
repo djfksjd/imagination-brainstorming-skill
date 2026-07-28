@@ -1,0 +1,137 @@
+{
+  "brief": "A way for a hospital ward to hand over shifts. The stated ask was a handover tool; the session established that the ward's actual problem is unfinished obligations dying at the boundary between two people, not information failing to be recorded.",
+  "run": 1,
+  "premises": [
+    {
+      "premise": "Handover is a transfer of information from the outgoing nurse to the incoming one.",
+      "verdict": "inverted",
+      "why": "What is actually transferred is a set of unfinished duties with owners. Facts survive in the chart on their own; duties are what evaporate at the boundary."
+    },
+    {
+      "premise": "Handover happens at shift change.",
+      "verdict": "inverted",
+      "why": "Duties accrue all shift. Shift change is only when they are settled, which is why composing the summary at 19:15 is the worst possible moment to remember anything."
+    },
+    {
+      "premise": "The patient is the subject of the handover, never a participant.",
+      "verdict": "deleted",
+      "why": "The patient is the one party present at every handover about them and the only one who notices when a duty is dropped twice."
+    },
+    {
+      "premise": "The handover must produce a legally admissible record.",
+      "verdict": "kept",
+      "why": "Non-negotiable for the trust. Any design that removes the record is dead on arrival, which is what killed the spoken-only option."
+    },
+    {
+      "premise": "The incoming nurse is the audience.",
+      "verdict": "deleted",
+      "why": "The party harmed by a bad handover is the patient and the nurse three shifts later, neither of whom is in the room when it is written."
+    }
+  ],
+  "banlist_contract": {
+    "model_instincts": [
+      "handover app with structured form",
+      "digitised SBAR template",
+      "voice-to-text shift summary",
+      "AI summary of the shift",
+      "ward status board",
+      "checklist with sign-off",
+      "chat channel per patient",
+      "task board with cards",
+      "wearable that records rounds",
+      "auto-transcribed nurse notes",
+      "handover quality score",
+      "smart whiteboard at the station"
+    ],
+    "skeleton": "A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end.",
+    "user_exclusions": [
+      "nothing that adds screen time at the bedside",
+      "no scoring or ranking of nurses",
+      "not another form to fill in at 19:15"
+    ],
+    "user_confirmed": true,
+    "manual_checks_cleared": [
+      {
+        "id": "user-01",
+        "note": "The correction pass happens at the station in the last ten minutes, not at the bedside; the bedside act stays spoken."
+      },
+      {
+        "id": "user-03",
+        "note": "Nothing is composed at 19:15. The draft already exists by then and the nurse only corrects or refuses lines."
+      }
+    ]
+  },
+  "approaches": [
+    {
+      "id": "spoken-form",
+      "frame_id": "conversation-only",
+      "unsafe_seat": true,
+      "chosen": false,
+      "summary": "No artefact at all. The ward adopts one fixed spoken sentence per patient, said at the bedside with the patient awake and present: what is outstanding, who it now falls to, and by when. The design is the grammar of that sentence plus the practice around it - the incoming nurse repeats it back, the patient can correct it, and nothing is typed. Training is a laminated card and two weeks of a senior nurse insisting.",
+      "failure_mode": "Nothing durable is produced, so the trust still needs its written record made separately, and spoken discipline is the first thing a short-staffed ward abandons at 03:00. Six weeks in, it survives only on the shifts where the sister who championed it is working."
+    },
+    {
+      "id": "ward-ledger",
+      "frame_id": "hundred-times",
+      "unsafe_seat": false,
+      "chosen": false,
+      "summary": "Stop pairing nurses altogether. Every outstanding duty on the ward enters one visible ledger with an owner and an expiry time, and shift change becomes a bulk reassignment event rather than a conversation - designed for a hundred-bed unit or a whole hospital where person-to-person pairing has already broken down. Escalation is automatic when an item passes its expiry twice.",
+      "failure_mode": "An owner-less pool becomes a landfill. Items age, the oldest are quietly ignored, and responsibility spreads thin enough that no individual feels the weight of any particular duty - the precise failure that pairing exists to prevent."
+    },
+    {
+      "id": "pre-written",
+      "frame_id": "instant-version",
+      "unsafe_seat": false,
+      "chosen": true,
+      "summary": "The handover is finished before the shift ends. It assembles itself continuously from what already happened - orders placed, medication given, calls made, results still pending - and by 19:00 a complete draft exists that nobody composed. The outgoing nurse's only act is to correct or refuse it in the last ten minutes at the station, line by line. Each line must carry either an outstanding duty with a named owner and a deadline, or an explicit statement that nothing is outstanding, stamped with who checked and when.",
+      "failure_mode": "Presumption. A draft that is ninety per cent right trains people to skim, and the tenth that is wrong is exactly the unusual thing that mattered. The counter-design is that no line can be accepted in bulk, but that is a bet on friction surviving contact with a busy ward."
+    }
+  ],
+  "chosen": {
+    "approach_id": "pre-written",
+    "why": "It attacks the inverted premise directly: duties accrue all shift, so the handover should too, and the nurse's scarce ten minutes go to correction rather than recall. It keeps the legal record that killed the spoken-only option, and unlike the ward ledger it preserves a named person on both sides of every duty.",
+    "forbids": "It forbids composing a handover from scratch, and it forbids the state 'nothing to report' from being expressible without a name and a timestamp attached. Bulk acceptance of the draft is refused by design, which costs the ward real minutes on every shift and will be the first thing anyone asks to remove.",
+    "impossible_now": "Passing a patient to the next shift with no statement about them at all becomes impossible; silence is no longer a valid handover state."
+  },
+  "first_use_scene": "19:12, station desk, the ward still loud from a late admission. The screen already holds tonight's handover: eleven patients, each one line, none of them written by her. She reads down and the fourth line says an ultrasound request is still unacknowledged since 14:40, which she had forgotten entirely. The seventh line says nothing is outstanding for bed 7, and it will not let her move past it until she puts her name and the time against that claim, so she walks over and actually looks at bed 7 before coming back and stamping it. At 19:20 the incoming nurse sits down beside her and they go through the four lines that changed, not the eleven that did not. The patient in bed 3, awake, hears her own line read out and says the pain relief was an hour ago, not two, and the line is corrected in front of her.",
+  "nearest_existing": [
+    {
+      "thing": "SBAR and ISBAR structured verbal handover",
+      "how_it_differs": "SBAR shapes what a person composes at the end of the shift. Here nothing is composed at all; the draft exists already and the nurse's work is refusal and correction."
+    },
+    {
+      "thing": "Electronic handover modules in hospital record systems",
+      "how_it_differs": "Those collect free text into a form and require a signature at the end. This one forbids the empty state, attaches a named owner and a deadline to every duty, and cannot be accepted in bulk."
+    },
+    {
+      "thing": "Aviation sterile-cockpit and read-back procedure",
+      "how_it_differs": "Read-back verifies that a message was received correctly. This verifies that an obligation has an owner after the boundary, which is a different failure to catch."
+    }
+  ],
+  "open_questions": [
+    "Will the trust accept a corrected auto-assembled draft as the legal record without a separate countersignature, or does that force a second artefact?",
+    "What is the silent error rate - how often is a wrong line accepted unchanged - and can it be measured without scoring individual nurses, which the ward has ruled out?",
+    "Who inherits a duty when the next shift is short-staffed and nobody can be named as its owner?"
+  ],
+  "decisions": [
+    {
+      "decision": "Rejected the spoken-only option as the primary design.",
+      "why": "The kept premise about the legal record kills it outright; a ward cannot run a second written process alongside it.",
+      "when": "2026-07-28, after premise pass"
+    },
+    {
+      "decision": "Adopted the spoken option's sentence grammar anyway as the format of each line.",
+      "why": "Duty plus owner plus deadline was the strongest thing produced in the whole session, and it survives being written down.",
+      "when": "2026-07-28, convergence"
+    },
+    {
+      "decision": "Bulk acceptance of the draft is refused, at a known cost in minutes.",
+      "why": "Skimming is the stated failure mode of this approach; removing the friction removes the design.",
+      "when": "2026-07-28, convergence"
+    }
+  ],
+  "handoff": {
+    "next": "writing-plans",
+    "why": "The concept is software with a clear boundary and one hard integration question; it is ready for an implementation plan once the record question is answered."
+  }
+}

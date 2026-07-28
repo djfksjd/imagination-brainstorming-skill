@@ -1,0 +1,54 @@
+{
+  "deck": "spec-schema",
+  "version": "0.1.0",
+  "note": "What spec_gate.py enforces on concept.json and the written spec. The gate cannot judge whether a concept is good, and it does not pretend to: what it proves is that the work which makes a concept usable - premises tested, instincts burned with the user's agreement, three genuinely different approaches, a stated refusal, named neighbours, honest open questions - was not skipped, and that the finished spec exists and does not restate the very skeleton the session banned.",
+  "placeholder_markers": ["tbd", "todo", "tbc", "fixme", "xxx", "lorem ipsum", "to be determined", "placeholder", "???"],
+  "question_marks": ["?", "？", "؟", "¿"],
+  "counts": {
+    "min_premises": 3,
+    "min_premises_broken": 1,
+    "premises_broken_without_note": 2,
+    "min_model_instincts": 8,
+    "approaches": 3,
+    "min_open_questions": 2,
+    "min_nearest_existing": 1,
+    "min_decisions": 2
+  },
+  "min_chars": {
+    "brief": 40,
+    "premise_why": 25,
+    "premises_note": 60,
+    "skeleton": 40,
+    "approach_summary": 120,
+    "approach_failure_mode": 60,
+    "chosen_why": 80,
+    "forbids": 60,
+    "impossible_now": 40,
+    "first_use_scene": 250,
+    "how_it_differs": 40,
+    "open_question": 25,
+    "decision_why": 30,
+    "handoff_why": 30,
+    "manual_check_note": 20,
+    "section_body": 80
+  },
+  "thresholds": {
+    "min_distinct_ratio": 0.3,
+    "max_skeleton_overlap": 0.6,
+    "max_field_similarity": 0.85
+  },
+  "required_markdown_sections": [
+    { "id": "brief", "note": "What was asked for, in the user's words plus what you learned it actually is." },
+    { "id": "premises", "note": "The premises found and which were deleted or inverted." },
+    { "id": "banlist", "note": "The shared ban contract: model instincts, the skeleton, and the user's own additions." },
+    { "id": "approaches", "note": "All three, described in comparable detail - including the one that was not chosen." },
+    { "id": "concept", "note": "The chosen concept, its mechanism, and what it forbids." },
+    { "id": "first-use", "note": "One concrete scene of first contact." },
+    { "id": "neighbours", "note": "Nearest existing things and how this differs." },
+    { "id": "open-questions", "note": "What is still unresolved, stated plainly." },
+    { "id": "decisions", "note": "Decision log: what was decided, when, and why." },
+    { "id": "handoff", "note": "What happens next and what this spec does not cover." }
+  ],
+  "sections_must_be_in_order": true,
+  "handoff_targets": ["writing-plans", "imagination-engine", "stop"]
+}

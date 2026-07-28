@@ -1,0 +1,6 @@
+{
+  "name": "imagination-brainstorming",
+  "version": "0.1.0",
+  "description": "Collaborative idea development that refuses to converge on the obvious — interrogates premises instead of collecting requirements, burns the obvious answers into a ban contract with the user, deals mutually incompatible approaches from a seeded deck, and gates the concept spec before review. Runs in Claude Code and Codex.",
+  "skills": "./skills/"
+}
