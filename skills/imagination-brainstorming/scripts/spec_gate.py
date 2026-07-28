@@ -269,7 +269,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
 
     brief = text_of(concept.get("brief"))
     if text_units(brief) < mins["brief"]:
-        failures.append(f"brief: needs at least {mins['brief']} chars - state what was asked and what you learned it actually is")
+        failures.append(f"brief: needs at least {mins['brief']} units - state what was asked and what you learned it actually is")
     check_padding("brief", brief, thresholds["min_distinct_ratio"], failures)
 
     # --- premises -----------------------------------------------------------
@@ -298,8 +298,8 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 else:
                     seen[key] = i
             why = text_of(p.get("why"))
-            if len(why) < mins["premise_why"]:
-                failures.append(f"premises[{i}].why: needs at least {mins['premise_why']} chars")
+            if text_units(why) < mins["premise_why"]:
+                failures.append(f"premises[{i}].why: needs at least {mins['premise_why']} units")
             check_padding(f"premises[{i}].why", why, thresholds["min_distinct_ratio"], failures)
         check_padding("premises_note", text_of(concept.get("premises_note")),
                       thresholds["min_distinct_ratio"], failures)
@@ -314,7 +314,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             # inventing a second inversion to hit a quota is worse than saying
             # the others held.
             failures.append(
-                f"only {broken} premise was overturned; add premises_note ({mins['premises_note']}+ chars) "
+                f"only {broken} premise was overturned; add premises_note ({mins['premises_note']}+ units) "
                 "explaining why the others held rather than inventing an inversion"
             )
 
@@ -336,7 +336,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                 failures.append("banlist_contract.model_instincts: duplicates - the list must hold distinct answers")
         skeleton = text_of(contract.get("skeleton"))
         if text_units(skeleton) < mins["skeleton"]:
-            failures.append(f"banlist_contract.skeleton: needs at least {mins['skeleton']} chars naming the shared structure")
+            failures.append(f"banlist_contract.skeleton: needs at least {mins['skeleton']} units naming the shared structure")
         if contract.get("user_confirmed") is not True:
             failures.append(
                 "banlist_contract.user_confirmed is not true - present the contract to the user as a list of "
@@ -389,7 +389,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
                     "forbids": " - a design that forbids nothing is a wish list",
                     "impossible_now": " - name what this makes impossible that was possible before",
                 }[field]
-                failures.append(f"chosen.{field}: needs at least {mins[key]} chars{hint}")
+                failures.append(f"chosen.{field}: needs at least {mins[key]} units{hint}")
             check_padding(f"chosen.{field}", value, thresholds["min_distinct_ratio"], failures)
         forbids = text_of(chosen.get("forbids"))
         if SELF_NEGATING_FORBID.search(forbids):
@@ -400,9 +400,9 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         chosen_text = " ".join(text_of(chosen.get(f)) for f in ("why", "forbids", "impossible_now"))
 
     scene = text_of(concept.get("first_use_scene"))
-    if len(scene) < mins["first_use_scene"]:
+    if text_units(scene) < mins["first_use_scene"]:
         failures.append(
-            f"first_use_scene: needs at least {mins['first_use_scene']} chars - one concrete scene, "
+            f"first_use_scene: needs at least {mins['first_use_scene']} units - one concrete scene, "
             "not a description of the concept"
         )
     check_padding("first_use_scene", scene, thresholds["min_distinct_ratio"], failures)
@@ -434,8 +434,8 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             if not text_of(n.get("thing")):
                 failures.append(f"nearest_existing[{i}].thing: missing")
             differs = text_of(n.get("how_it_differs"))
-            if len(differs) < mins["how_it_differs"]:
-                failures.append(f"nearest_existing[{i}].how_it_differs: needs at least {mins['how_it_differs']} chars")
+            if text_units(differs) < mins["how_it_differs"]:
+                failures.append(f"nearest_existing[{i}].how_it_differs: needs at least {mins['how_it_differs']} units")
             check_padding(f"nearest_existing[{i}].how_it_differs", differs, thresholds["min_distinct_ratio"], failures)
 
     questions = concept.get("open_questions")
@@ -481,7 +481,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             else:
                 seen_d.add(normalize(statement))
             if text_units(text_of(d.get("why"))) < mins["decision_why"]:
-                failures.append(f"decisions[{i}].why: needs at least {mins['decision_why']} chars")
+                failures.append(f"decisions[{i}].why: needs at least {mins['decision_why']} units")
             check_padding(f"decisions[{i}].why", text_of(d.get("why")), thresholds["min_distinct_ratio"], failures)
 
     handoff = concept.get("handoff")
@@ -492,7 +492,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
         if target not in schema["handoff_targets"]:
             failures.append(f"handoff.next: must be one of {', '.join(schema['handoff_targets'])}")
         if text_units(text_of(handoff.get("why"))) < mins["handoff_why"]:
-            failures.append(f"handoff.why: needs at least {mins['handoff_why']} chars")
+            failures.append(f"handoff.why: needs at least {mins['handoff_why']} units")
         check_padding("handoff.why", text_of(handoff.get("why")), thresholds["min_distinct_ratio"], failures)
 
     # --- the supplied contract must be this session's contract --------------
@@ -539,7 +539,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             mid = text_of(m.get("id"))
             note = cleared_map.get(mid, "")
             check_padding(f"manual_checks_cleared[{mid}]", note, thresholds["min_distinct_ratio"], failures)
-            if len(note) < mins["manual_check_note"]:
+            if text_units(note) < mins["manual_check_note"]:
                 failures.append(
                     f"banlist_contract.manual_checks_cleared: exclusion '{mid}' "
                     f"({text_of(m.get('statement'))[:60]}...) has no note saying how the concept avoids it. "
