@@ -104,30 +104,60 @@ PLACEHOLDER_NAMES = {
 }
 
 
+MAX_MARKS_PER_BASE = 2
+
+
 def text_units(text: str) -> int:
     """Length in units rather than code points.
 
     Every minimum in this skill is asking for an amount of *argument*, not an
-    amount of Unicode. Counting code points makes a Korean, Japanese or Chinese
-    section roughly twice as hard to satisfy as an English one carrying the same
-    content, because one Han character or Hangul syllable does the work of about
-    two Latin letters. So a wide letter or digit counts as two units.
+    amount of Unicode. Three things follow, and each one was a defect first.
 
-    Only letters and digits are widened. Wide punctuation, box drawing and emoji
-    stay at one, otherwise a row of decorative characters would clear a floor
-    that plain prose has to earn. Compatibility-normalizing first stops fullwidth
-    Latin from being used to inflate the count.
+    A wide letter or digit counts as two units. Counting code points makes a
+    Korean, Japanese or Chinese section roughly twice as hard to satisfy as an
+    English one carrying the same content, because one Han character or Hangul
+    syllable does the work of about two Latin letters. Only letters and digits
+    are widened; wide punctuation, box drawing and emoji stay at one.
+    Compatibility-normalizing first stops fullwidth Latin inflating the count.
+
+    A run of characters that are neither letters nor digits counts once, however
+    long it is. `text_units` counted whitespace while `distinct_ratio` tokenizes
+    it away, so `'Nurse' + 240 spaces + 'waits'` measured 250 units at a perfect
+    1.00 distinct ratio and cleared every floor in the schema. One space between
+    two words still costs the one unit it always did, so ordinary prose measures
+    what it did before; a hundred spaces, dots or dashes in a row cost that same
+    one. This is a floor on content units, not a claim that padding is now
+    impossible - an author willing to type a hundred distinct words still clears
+    a floor with a hundred words of nothing, which is what `distinct_ratio` and
+    a human reader are for.
+
+    Combining marks count, up to two per base character. Stripping them was
+    right for stray zero-width joiners and wrong for every script that writes
+    its vowels and tones as marks: 282 characters of Thai prose measured 209
+    units and were refused. Two per base is what ordinary Thai, Devanagari,
+    Arabic and Hebrew orthography uses; past that the marks are decoration
+    stacked on one letter, and they stop paying.
     """
     if not isinstance(text, str):
         return 0
     total = 0
+    marks_on_base = 0
+    in_separator = False
     for ch in unicodedata.normalize("NFKC", text):
         category = unicodedata.category(ch)
-        if category in ("Cc", "Cf", "Mn", "Me"):
+        if category in ("Cc", "Cf"):
             continue
-        if category[0] in ("L", "N") and unicodedata.east_asian_width(ch) in ("W", "F"):
-            total += 2
-        else:
+        if category in ("Mn", "Me", "Mc"):
+            if marks_on_base < MAX_MARKS_PER_BASE:
+                marks_on_base += 1
+                total += 1
+            continue
+        marks_on_base = 0
+        if category[0] in ("L", "N"):
+            in_separator = False
+            total += 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+        elif not in_separator:
+            in_separator = True
             total += 1
     return total
 

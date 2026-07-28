@@ -43,8 +43,11 @@ def ko(units: int) -> str:
         out += ch
     # The gate strips its values, so a trailing space would not be counted.
     out = out.rstrip()
+    # Padded with a letter rather than a full stop: a run of characters that are
+    # neither letters nor digits counts as one unit however long it is, so a
+    # second full stop would add nothing and this loop would not terminate.
     while text_units(out) < units:
-        out += "."
+        out += "n"
     assert text_units(out) == units, f"could not build {units} units"
     assert len(out) < units, "the point of the test is that code points and units differ"
     return out
@@ -104,3 +107,83 @@ def test_cjk_text_one_unit_short_is_still_refused(example, check, schema, key, s
     concept = deepcopy(example)
     setter(concept, ko(schema["min_units"][key] - 1))
     assert label in check(concept), f"{key}: the floor must still be a floor"
+
+
+# --- padding must not buy units -------------------------------------------
+#
+# `text_units` counted whitespace toward every floor while `distinct_ratio`
+# tokenized it away, so two words separated by enough spaces measured whatever
+# the author wanted at a perfect 1.00 distinct ratio. Fixed at the measurement
+# rather than per field, so every floor in the schema is covered by it.
+
+PADDED = {
+    "space": "Nurse" + " " * 240 + "waits",
+    "dot": "Nurse" + "." * 240 + "waits",
+    "dash": "Nurse" + "-" * 240 + "waits",
+    "wide-space": "Nurse" + "　" * 240 + "waits",
+}
+
+
+@pytest.mark.parametrize("kind", sorted(PADDED))
+def test_padding_with_non_content_characters_buys_no_units(kind):
+    padded = PADDED[kind]
+    assert len(padded) >= 250, "the fixture is long enough in code points to clear the floor"
+    assert text_units(padded) == 11, f"{kind}: a run of non-content characters counts once"
+
+
+@pytest.mark.parametrize("kind", sorted(PADDED))
+def test_a_padded_field_does_not_clear_its_floor(example, check, kind):
+    concept = deepcopy(example)
+    concept["first_use_scene"] = PADDED[kind]
+    assert "first_use_scene" in check(concept), f"{kind}: padding cleared a 250-unit floor"
+
+
+# --- scripts that write vowels and tones as combining marks ----------------
+#
+# Dropping every Mn/Me code point was right for stray zero-width joiners and
+# wrong for Thai, Devanagari, Arabic and Hebrew, where the marks are the
+# orthography: 282 characters of Thai prose measured 209 units and were refused
+# by a 250-unit floor that plain English of the same length cleared.
+
+THAI = (
+    "เวลา 19:12 ที่โต๊ะพยาบาล หอผู้ป่วยยังอึกทึกจากการรับผู้ป่วยใหม่ พยาบาลเวรดึกอ่านรายการที่ยังค้างอยู่ "
+    "ผู้ป่วยสิบเอ็ดรายบรรทัดละหนึ่งราย บรรทัดที่สี่บอกว่าใบขอตรวจอัลตราซาวด์ยังไม่มีใครรับทราบตั้งแต่บ่ายสองโมงสี่สิบ "
+    "เธอลืมไปสนิท บรรทัดที่เจ็ดบอกว่าเตียงเจ็ดไม่มีสิ่งใดค้างและระบบไม่ยอมให้ผ่านไปจนกว่าเธอจะลงชื่อกำกับ"
+)
+
+DEVANAGARI = (
+    "रात की पाली खत्म होने पर नर्स स्टेशन के परदे पर पिछले बारह घंटों के अधूरे काम एक सूची की तरह दिखते हैं। "
+    "खून की जांच का नतीजा देखना, दर्द की दवा का दोबारा आकलन करना, और परिवार को छुट्टी का समय बताना अब भी "
+    "किसी के नाम पर दर्ज नहीं है। नर्स पहली पंक्ति पढ़कर उसे पूरा बताती है और बाकी दो वैसी ही छोड़ देती है।"
+)
+
+ARABIC = (
+    "في الساعة السابعة مساء تقف الممرضة أمام الشاشة في مكتب القسم وتقرأ ما تبقى من الالتزامات خلال "
+    "الساعات الاثنتي عشرة الماضية، وهي نتيجة تحليل الدم ومراجعة مسكن الألم وموعد الخروج الذي لم يبلغ "
+    "به أحد بعد. تمسح السطر الأول لأنها أنهته بنفسها وتترك السطرين الآخرين لزميلتها كما هما تماما."
+)
+
+MARK_SCRIPTS = {"thai": THAI, "devanagari": DEVANAGARI, "arabic": ARABIC}
+
+
+@pytest.mark.parametrize("script", sorted(MARK_SCRIPTS))
+def test_marks_are_orthography_not_decoration(script):
+    prose = MARK_SCRIPTS[script]
+    units = text_units(prose)
+    assert units >= 250, f"{script}: {units} units for {len(prose)} characters of ordinary prose"
+    # Close to the code-point count rather than exactly it: NFKC decomposes a
+    # handful of composite characters (Thai SARA AM among them) before counting.
+    assert units <= len(prose) + 5, f"{script}: marks must not inflate the count either"
+
+
+@pytest.mark.parametrize("script", sorted(MARK_SCRIPTS))
+def test_prose_in_a_mark_using_script_clears_the_scene_floor(example, check, script):
+    concept = deepcopy(example)
+    concept["first_use_scene"] = MARK_SCRIPTS[script]
+    assert "first_use_scene" not in check(concept), f"{script}: legitimate prose was refused"
+
+
+def test_marks_stacked_on_one_letter_stop_paying():
+    """The cap is what keeps 'count the marks' from being a padding vector: two
+    marks per base is ordinary orthography, two hundred is decoration."""
+    assert text_units("a" + "́" * 200) == 3
