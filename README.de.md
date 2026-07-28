@@ -84,9 +84,6 @@ Ich habe drei Ideen für das Onboarding und alle fühlen sich wie dieselbe an.
 Bohr richtig nach, bevor ich mich festlege.
 ```
 
-> [!TIP]
-> Bring deine eigenen Ausschlüsse mit. „Nicht noch ein Formular" wiegt mehr als jeder Zuspruch — und wenn du keine lieferst, fragt der Skill danach.
-
 ### Was eine Sitzung tatsächlich tut
 
 | Phase | Was du siehst | Wodurch erzwungen |
@@ -106,6 +103,86 @@ Bohr richtig nach, bevor ich mich festlege.
 | **Frage-Familien** (12) | unausgesprochene Prämisse · die Fassung, die du hasst · neu definierter Erfolg · umgedrehte Einschränkung · für wen es nicht ist · was unmöglich bleiben muss · der Friedhof · wozu es verpflichtet · benachbarte Welten · wie es endet · die Skala, bei der es bricht · die administrative Hälfte |
 | **Rahmen** (40 in 10 Kategorien) | Subtraktion · Umkehrung · Akteurswechsel · Maßstabswechsel · Zeitwechsel · Ökonomie · Instandhaltung · Medienwechsel · Ritual · Scheitern zuerst |
 | **Klischees** | Pitch-Reflexe, hohle Adjektive und die Satzmuster, die eine Positionierung statt eines Konzepts verraten |
+
+### Ihr Anteil daran
+
+Diese Fähigkeit ist ein Gespräch, kein Befehl. Vier Momente entscheiden, ob die Sitzung etwas taugt, und alle vier gehören Ihnen.
+
+**1 · Die Prämissenfragen beantworten.** Sie werden sich nicht wie eine Anforderungserhebung anfühlen, denn sie sind keine. *„Wer ist davon betroffen, ohne je gewählt zu haben, es zu benutzen?"* ist keine Stakeholder-Frage. Nützlich sind die Antworten, über die Sie nachdenken müssen; die, die mit *„na ja, offensichtlich…"* beginnen, sind genau die Prämisse, die die Sitzung sucht. Sagen Sie den offensichtlichen Satz trotzdem — er ist das Material.
+
+**2 · Den Verbotsvertrag unterschreiben.** Nach etwa drei Fragen sehen Sie sechs Antworten und das **Skelett**, das sie teilen: die Struktur darunter, nicht die Formulierung — *ein Apparat, ein Feed, ein Marktplatz, ein Dashboard*. Dann werden Sie gefragt:
+
+> „Das sind die billigsten Antworten hier, ich nehme sie vom Tisch. Welche davon hatten Sie schon im Kopf, und was würden Sie ergänzen?"
+
+Beantworten Sie beide Hälften. Die zu nennen, die Sie ohnehin vor sich sahen, kostet nichts und ist oft der nützlichste Satz der Sitzung. Ihre eigenen Ausschlüsse dürfen in jeder Form kommen — *„nichts, was die Bildschirmzeit am Bett erhöht"* ist völlig in Ordnung, auch wenn kein Skript das abgleichen kann: Das Gatter legt es als manuelle Prüfung ab und lässt die Spezifikation erst durch, wenn dafür eine schriftliche Antwort vorliegt.
+
+**3 · Der unbequeme Platz.** Einer der drei Ansätze ist absichtlich der, den Sie voraussichtlich ablehnen, und er wird mit derselben Sorgfalt vertreten wie die anderen. Lehnen Sie ihn ab, wenn er falsch ist — aber sagen Sie *warum*, in einem Satz. Dieser Satz verschiebt das Konzept meist mehr als die Wahl des Siegers.
+
+**4 · Das Prüf-Gatter.** Die Spezifikation wird in eine Datei geschrieben und mit einem *„bitte lies sie und sag mir, was zu ändern ist"* zurückgegeben. Das ist keine Formalie. Die Gatter prüfen, dass die Arbeit getan wurde, nicht dass das Konzept richtig ist — siehe unten.
+
+### Die drei Sätze, die zählen
+
+**Wenn sich alle Optionen gleich anfühlen:**
+
+```text
+Das ist immer noch eine Idee in drei Kostümen. Regeneriere.
+```
+
+Sie teilt aus einem neuen Zug neu aus, nimmt *jedes Element der vorigen Runde* in den Vertrag auf und löscht eine weitere Prämisse aus der Ausgrabung — und sagt Ihnen, welche. Diese letzte Zeile ist der Punkt.
+
+**Wenn die konventionelle Antwort tatsächlich richtig ist:** sagen Sie es. Die Fähigkeit muss in einem Satz zustimmen, sich selbst verlassen und die gewöhnliche Arbeit außerhalb erledigen. Ein Login-Formular braucht keine Prämissenausgrabung, und der Fähigkeit ist verboten, etwas anderes vorzugeben.
+
+**Wenn das Briefing zu groß ist:** die Erkundung sollte das fangen, aber falls nicht — *„das sind drei Systeme, trenn sie"* — bekommt jedes Stück seine eigene Sitzung und seine eigene Spezifikation.
+
+### Die Skripte selbst fahren
+
+Python 3.11, Standardbibliothek, nichts zu installieren. Die Skripte liegen in `skills/imagination-brainstorming/scripts/`; schreiben Sie Arbeitsdateien in ein Scratch-Verzeichnis, nie in den Ordner der Fähigkeit.
+
+```bash
+# 1 · Fragefamilien und drei unvereinbare Rahmen austeilen
+python3 scripts/deal.py --brief "eine Art, die Schichtübergabe auf Station zu machen" --run 1 --out /tmp/work
+
+# 2 · den Vertrag bauen — zweimal, und die Reihenfolge zählt
+python3 scripts/banlist.py --brief "<Briefing>" --instincts instincts.txt \
+    --skeleton "eine Liste, die am Schichtende ausgefüllt wird" --out /tmp/work
+#    …dem Nutzer zeigen, seine Antwort einholen, und erst dann:
+python3 scripts/banlist.py --brief "<Briefing>" --instincts instincts.txt \
+    --skeleton "eine Liste, die am Schichtende ausgefüllt wird" \
+    --user exclusions.txt --confirmed --out /tmp/work
+
+# 3 · beweisen, dass die drei Ansätze wirklich drei sind
+python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+
+# 4 · Spezifikation, Sidecar und Vertrag gemeinsam durchs Gatter — alle drei sind Pflicht
+python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
+    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+```
+
+`--confirmed` protokolliert eine Zustimmung, die bereits stattgefunden hat. Sie zu setzen, bevor der Nutzer die Liste gesehen hat, ist eine Lüge, auf die sich die restliche Kette dann stützt, und das Gatter kann sie nicht erkennen — deshalb zwei Aufrufe statt eines Schalters.
+
+`cliche_lint.py` ist für **Entwürfe mitten in der Sitzung**. Auf eine fertige Spezifikation angewandt, markiert es deren eigenen Verbotslisten-Abschnitt; die fertige Spezifikation prüft `spec_gate.py`, und das schneidet diesen Abschnitt vorher heraus.
+
+### Exit-Codes und was jeweils zu tun ist
+
+| Code | Bedeutung | Der Fix |
+|---|---|---|
+| `0` | bestanden | — |
+| `1` | Aufruf, fehlende Datei oder fehlerhaftes Deck | ein Tippfehler, kein Urteil |
+| `2` | **Vertrag oder Spezifikation unvollständig** — zu wenige Reflexe, kein Skelett, unbestätigter Vertrag, fehlender Abschnitt, manuelle Prüfung ohne schriftliche Antwort, oder eine Spezifikation, die ihr eigenes Sidecar nicht wirklich enthält | die fehlende Arbeit nachholen |
+| `3` | **die Ansätze sind Varianten**, oder verbotenes Material ist vorhanden | neu schreiben, oder mit `--run 2` neu austeilen und neu bauen |
+
+### Was die Gatter nicht prüfen können
+
+> [!IMPORTANT]
+> Sie sind Böden. Sie belegen, dass die Arbeit **getan** wurde, nicht dass sie **richtig** war. Drei Dinge passieren jedes Gatter in diesem Repository:
+>
+> - **eine Begründung, die ihre eigene Evidenz umdreht** — ein Argument, dessen Prämisse bei genauem Lesen die entgegengesetzte Schlussfolgerung stützt;
+> - **ein Mechanismus, der mit den eigenen Mitteln angreifbar ist** — etwa eine Zahl, die sich mit der Reihenfolge der Berechnung ändert, präsentiert als Transparenzbeweis des Konzepts;
+> - **drei Ansätze, die in Wahrheit eine Idee sind**, in drei Vokabularen. Die Prüfung fängt Umformulierung und gemeinsame Todesursachen; lesen kann sie nicht.
+>
+> Alle drei traten im eigenen Probelauf dieser Fähigkeit auf, und alle drei fand ein Mensch, kein Skript. Also: bevor die Spezifikation bei Ihnen ankommt, lassen Sie sie von einem zweiten Leser angreifen — ein anderes Modell, eine Kollegin — mit der Aufgabe zu begründen, dass **sie verliert**, nicht dass sie besser werden könnte. „Wie macht man das besser" bringt Politur. „Warum verliert das" bringt die umgedrehte Prämisse.
+>
+> Die Fähigkeit führt auch an sich selbst eine **Beweisrichtungs-Prüfung** durch: Zu jedem tragenden *weil* muss sie die entgegengesetzte Schlussfolgerung notieren, die dieselbe Prämisse stützen würde, und benennen, was die entscheidende Instanz tatsächlich beobachten kann. Das ist der Schritt, der *„die Jury ist eine Maschine, also ist unser internes Protokoll das Unterscheidungsmerkmal"* fängt — eine Maschine kann das interne Protokoll nicht beobachten, also spricht diese Prämisse für das Gegenteil.
 
 ## Was er nicht tut
 

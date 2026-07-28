@@ -84,9 +84,6 @@ Tengo tres ideas para el onboarding y todas me parecen la misma idea.
 Aprieta de verdad antes de que me decida.
 ```
 
-> [!TIP]
-> Trae tus propias exclusiones. "Otro formulario no" vale más que cualquier ánimo — y si no las das, la skill te las pedirá.
-
 ### Qué hace realmente una sesión
 
 | Etapa | Lo que ves | Qué lo impone |
@@ -106,6 +103,86 @@ Aprieta de verdad antes de que me decida.
 | **Familias de preguntas** (12) | premisa no dicha · la versión que odiarías · el éxito redefinido · la restricción invertida · para quién no es · qué debe seguir siendo imposible · el cementerio · a qué obliga · mundos vecinos · cómo termina · la escala donde se rompe · la mitad administrativa |
 | **Marcos** (40, en 10 categorías) | sustracción · inversión · cambio de actor · cambio de escala · cambio temporal · economía · mantenimiento · cambio de medio · ritual · el fallo primero |
 | **Clichés** | reflejos de presentación, adjetivos huecos y los patrones estructurales que delatan un posicionamiento en lugar de un concepto |
+
+### Tu parte en esto
+
+Esta habilidad es una conversación, no un comando. Cuatro momentos deciden si la sesión vale algo, y los cuatro son tuyos.
+
+**1 · Responder a las preguntas de premisa.** No van a parecer una toma de requisitos, porque no lo son. *"¿A quién afecta esto sin haber elegido nunca usarlo?"* no es una pregunta sobre stakeholders. Las respuestas útiles son las que te obligan a pensar; las que empiezan con *"bueno, obviamente…"* son exactamente la premisa que la sesión intenta encontrar. Di igualmente esa frase obvia — ese es el material.
+
+**2 · Firmar el contrato de prohibiciones.** Tras unas tres preguntas verás unas seis respuestas y el **esqueleto** que comparten: la estructura de debajo, no la redacción — *un aparato, un feed, un marketplace, un panel*. Se te preguntará:
+
+> "Estas son las respuestas más baratas aquí, así que las retiro de la mesa. ¿Cuáles de ellas ya estabas imaginando, y qué añadirías?"
+
+Responde a las dos mitades. Nombrar la que ya tenías en la cabeza no cuesta nada y suele ser la frase más útil de la sesión. Añade tus exclusiones en la forma en que te salgan — *"nada que aumente el tiempo de pantalla junto a la cama"* vale, aunque ningún script pueda cotejarlo: la verja lo anota como comprobación manual y no dejará pasar la especificación hasta que tenga una respuesta escrita.
+
+**3 · El asiento incómodo.** Uno de los tres enfoques es deliberadamente el que se espera que rechaces, y se defiende con el mismo detalle que los otros. Recházalo si está mal — pero di *por qué*, en una frase. Esa frase suele mover el concepto más que elegir al ganador.
+
+**4 · La verja de revisión.** La especificación se escribe en un archivo y vuelve con un *"léela y dime qué cambiar"*. No es un trámite. Las verjas comprueban que el trabajo se hizo, no que el concepto sea correcto — ver abajo.
+
+### Las tres cosas que hay que decir
+
+**Cuando todas las opciones se parecen:**
+
+```text
+Siguen siendo una idea con tres disfraces. Regenera.
+```
+
+Reparte desde una tirada nueva, añade *todos los elementos de la ronda anterior* al contrato y borra una premisa más de la excavación — y te dice cuál era. Esa última línea es el punto.
+
+**Cuando la respuesta convencional es de verdad la correcta:** dilo. La habilidad está obligada a estar de acuerdo en una frase, salir de sí misma y hacer el trabajo normal fuera. Un formulario de acceso no necesita una excavación de premisas, y a la habilidad se le prohíbe fingir lo contrario.
+
+**Cuando el encargo es demasiado grande:** debería detectarlo en el reconocimiento, pero si no — *"esto son tres sistemas, sepáralos"* — cada pieza tiene su propia sesión y su propia especificación.
+
+### Ejecutar los scripts a mano
+
+Python 3.11, biblioteca estándar, nada que instalar. Los scripts están en `skills/imagination-brainstorming/scripts/`; escribe los archivos de trabajo en un directorio temporal, nunca dentro de la carpeta de la habilidad.
+
+```bash
+# 1 · reparte las familias de preguntas y tres marcos incompatibles
+python3 scripts/deal.py --brief "una forma de traspasar turnos en la planta" --run 1 --out /tmp/work
+
+# 2 · construye el contrato — dos veces, y el orden importa
+python3 scripts/banlist.py --brief "<encargo>" --instincts instincts.txt \
+    --skeleton "una lista que se rellena al final del turno" --out /tmp/work
+#    …muéstraselo al usuario, recoge su respuesta, y solo entonces:
+python3 scripts/banlist.py --brief "<encargo>" --instincts instincts.txt \
+    --skeleton "una lista que se rellena al final del turno" \
+    --user exclusions.txt --confirmed --out /tmp/work
+
+# 3 · demuestra que los tres enfoques son realmente tres
+python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+
+# 4 · pasa por la verja la especificación, su sidecar y el contrato juntos — los tres son obligatorios
+python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
+    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+```
+
+`--confirmed` registra un consentimiento que ya ocurrió. Activarlo antes de que el usuario haya visto la lista es una mentira de la que depende todo el resto de la tubería, y la verja no tiene forma de detectarla — por eso son dos llamadas y no un flag.
+
+`cliche_lint.py` es para **borradores a mitad de sesión**. Pásalo sobre una especificación terminada y señalará la propia sección de prohibiciones del documento; quien revisa una especificación terminada es `spec_gate.py`, que recorta ese tramo antes.
+
+### Códigos de salida, y qué hacer con cada uno
+
+| Código | Significado | El arreglo |
+|---|---|---|
+| `0` | pasó | — |
+| `1` | uso, archivo ausente o mazo mal formado | una errata, no un juicio |
+| `2` | **el contrato o la especificación están incompletos** — pocos impulsos, sin esqueleto, contrato sin firmar, sección ausente, comprobación manual sin respuesta escrita, o una especificación que no contiene de verdad su propio sidecar | haz el trabajo que falta |
+| `3` | **los enfoques son variantes**, o hay material prohibido | reescribe, o reparte con `--run 2` y vuelve a construir |
+
+### Lo que las verjas no pueden comprobar
+
+> [!IMPORTANT]
+> Son suelos. Prueban que el trabajo se **hizo**, no que fuera **correcto**. Tres cosas pasan todas las verjas de este repositorio:
+>
+> - **una justificación que invierte su propia evidencia** — un argumento cuya premisa, leída con cuidado, sostiene la conclusión contraria;
+> - **un mecanismo atacable en sus propios términos** — por ejemplo, un número que cambia según el orden en que se calculó, presentado como la prueba de transparencia del concepto;
+> - **tres enfoques que son de verdad una sola idea** en tres vocabularios. La comprobación detecta la reformulación y las causas de muerte compartidas; no sabe leer.
+>
+> Las tres ocurrieron durante la propia sesión de prueba de esta habilidad y las tres las cazó una persona, no un script. Así que: antes de que la especificación llegue a ti, haz que un segundo lector la ataque — otro modelo, un colega — y pídele que argumente que **pierde**, no que podría mejorarse. "Cómo lo harías mejor" te trae pulido. "Por qué pierde esto" te trae la premisa invertida.
+>
+> La habilidad también se aplica a sí misma una **auditoría de dirección de la evidencia**: para cada *porque* que sostiene algo, tiene que escribir la conclusión opuesta que la misma premisa sostendría, y nombrar qué puede observar realmente quien decide. Ese es el paso que caza *"el evaluador es una máquina, por tanto nuestro registro interno es el diferenciador"* — una máquina no puede observar el registro interno, así que esa premisa argumenta lo contrario.
 
 ## Lo que no hará
 

@@ -84,9 +84,6 @@ Tenho três ideias para o onboarding e todas parecem a mesma ideia.
 Aperta de verdade antes de eu decidir.
 ```
 
-> [!TIP]
-> Traga suas próprias exclusões. "Outro formulário não" vale mais que qualquer incentivo — e, se você não der, a skill vai pedir.
-
 ### O que uma sessão realmente faz
 
 | Etapa | O que você vê | O que impõe |
@@ -106,6 +103,86 @@ Aperta de verdade antes de eu decidir.
 | **Famílias de perguntas** (12) | premissa não dita · a versão que você odiaria · o sucesso redefinido · a restrição invertida · para quem não é · o que precisa continuar impossível · o cemitério · a que obriga · mundos vizinhos · como termina · a escala em que quebra · a metade administrativa |
 | **Molduras** (40, em 10 categorias) | subtração · inversão · troca de ator · troca de escala · troca de tempo · economia · manutenção · troca de meio · ritual · falha primeiro |
 | **Clichês** | reflexos de pitch, adjetivos ocos e os padrões estruturais que denunciam um posicionamento em vez de um conceito |
+
+### A sua parte nisso
+
+Esta habilidade é uma conversa, não um comando. Quatro momentos decidem se a sessão vale alguma coisa, e os quatro são seus.
+
+**1 · Responder às perguntas de premissa.** Não vão parecer levantamento de requisitos, porque não são. *"Quem é afetado por isto sem nunca ter escolhido usá-lo?"* não é uma pergunta sobre partes interessadas. As respostas úteis são aquelas em que você precisa pensar; as que começam com *"bem, obviamente…"* são exatamente a premissa que a sessão procura. Diga essa frase óbvia mesmo assim — é ela o material.
+
+**2 · Assinar o contrato de proibições.** Depois de umas três perguntas, você vê cerca de seis respostas e o **esqueleto** que elas compartilham: a estrutura embaixo, não a redação — *um aparelho, um feed, um marketplace, um painel*. E então:
+
+> "Estas são as respostas mais baratas aqui, então vou tirá-las da mesa. Quais delas você já estava imaginando, e o que acrescentaria?"
+
+Responda às duas metades. Nomear a que você já tinha na cabeça não custa nada e costuma ser a frase mais útil da sessão. Acrescente suas exclusões no formato que vier — *"nada que aumente o tempo de tela ao lado do leito"* serve, mesmo que nenhum script consiga casar isso: o portão registra como verificação manual e não libera a especificação enquanto não houver resposta escrita.
+
+**3 · A cadeira desconfortável.** Uma das três abordagens é deliberadamente a que se espera que você rejeite, e é defendida com o mesmo cuidado que as outras. Rejeite se estiver errada — mas diga *por quê*, em uma frase. Essa frase costuma deslocar o conceito mais do que escolher o vencedor.
+
+**4 · O portão de revisão.** A especificação é escrita num arquivo e devolvida com um *"leia e me diga o que mudar"*. Não é formalidade. Os portões verificam se o trabalho foi feito, não se o conceito está certo — veja abaixo.
+
+### As três coisas a dizer
+
+**Quando todas as opções parecem iguais:**
+
+```text
+Continua sendo uma ideia com três fantasias. Regenere.
+```
+
+Ela redistribui a partir de uma rodada nova, acrescenta *todos os elementos da rodada anterior* ao contrato e apaga mais uma premissa da escavação — e diz qual foi. Essa última linha é o ponto.
+
+**Quando a resposta convencional é de fato a certa:** diga isso. A habilidade é obrigada a concordar em uma frase, sair de si mesma e fazer o trabalho comum do lado de fora. Um formulário de login não precisa de escavação de premissas, e a habilidade está proibida de fingir o contrário.
+
+**Quando o briefing é grande demais:** o reconhecimento deveria pegar isso, mas se não pegar — *"isto são três sistemas, separe"* — cada pedaço ganha a própria sessão e a própria especificação.
+
+### Rodando os scripts à mão
+
+Python 3.11, biblioteca padrão, nada a instalar. Os scripts ficam em `skills/imagination-brainstorming/scripts/`; escreva os arquivos de trabalho num diretório temporário, nunca dentro da pasta da habilidade.
+
+```bash
+# 1 · distribua as famílias de perguntas e três enquadramentos incompatíveis
+python3 scripts/deal.py --brief "um jeito de passar o plantão na ala" --run 1 --out /tmp/work
+
+# 2 · construa o contrato — duas vezes, e a ordem importa
+python3 scripts/banlist.py --brief "<briefing>" --instincts instincts.txt \
+    --skeleton "uma lista preenchida no fim do turno" --out /tmp/work
+#    …mostre ao usuário, colha a resposta, e só então:
+python3 scripts/banlist.py --brief "<briefing>" --instincts instincts.txt \
+    --skeleton "uma lista preenchida no fim do turno" \
+    --user exclusions.txt --confirmed --out /tmp/work
+
+# 3 · prove que as três abordagens são mesmo três
+python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+
+# 4 · leve especificação, sidecar e contrato juntos ao portão — os três são obrigatórios
+python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
+    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+```
+
+`--confirmed` registra um consentimento que já aconteceu. Ligá-lo antes de o usuário ter visto a lista é uma mentira da qual todo o resto do pipeline passa a depender, e o portão não tem como detectá-la — por isso são duas chamadas, e não um único sinalizador.
+
+`cliche_lint.py` é para **rascunhos no meio da sessão**. Rodado sobre uma especificação pronta, ele aponta a própria seção de proibições do documento; quem revisa a especificação pronta é o `spec_gate.py`, que recorta esse trecho antes.
+
+### Códigos de saída, e o que fazer com cada um
+
+| Código | Significado | O conserto |
+|---|---|---|
+| `0` | passou | — |
+| `1` | uso, arquivo ausente ou baralho malformado | é erro de digitação, não julgamento |
+| `2` | **o contrato ou a especificação está incompleto** — poucos impulsos, sem esqueleto, contrato não assinado, seção faltando, verificação manual sem resposta escrita, ou uma especificação que não contém de verdade o próprio sidecar | faça o trabalho que falta |
+| `3` | **as abordagens são variantes**, ou há material proibido | reescreva, ou redistribua com `--run 2` e construa de novo |
+
+### O que os portões não conseguem verificar
+
+> [!IMPORTANT]
+> Eles são pisos. Provam que o trabalho foi **feito**, não que estava **certo**. Três coisas passam por todos os portões deste repositório:
+>
+> - **uma justificativa que inverte a própria evidência** — um argumento cuja premissa, lida com cuidado, sustenta a conclusão oposta;
+> - **um mecanismo atacável nos próprios termos** — por exemplo, um número que muda conforme a ordem em que foi calculado, apresentado como a prova de transparência do conceito;
+> - **três abordagens que na verdade são uma ideia** em três vocabulários. A checagem pega reformulação e causas de morte compartilhadas; ela não sabe ler.
+>
+> As três aconteceram durante a própria sessão de teste desta habilidade e as três foram pegas por uma pessoa, não por um script. Então: antes que a especificação chegue até você, peça a um segundo leitor que a ataque — outro modelo, um colega — e que argumente que **ela perde**, não que poderia melhorar. "Como deixar isso melhor" traz polimento. "Por que isso perde" traz a premissa invertida.
+>
+> A habilidade também roda em si mesma uma **auditoria da direção da evidência**: para cada *porque* que sustenta algo, ela precisa escrever a conclusão oposta que a mesma premissa sustentaria, e nomear o que a parte que decide consegue de fato observar. É esse passo que pega *"o avaliador é uma máquina, portanto nosso registro interno é o diferencial"* — uma máquina não consegue observar o registro interno, então essa premissa argumenta pelo contrário.
 
 ## O que ela não vai fazer
 

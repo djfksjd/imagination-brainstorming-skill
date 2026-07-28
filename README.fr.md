@@ -84,9 +84,6 @@ J'ai trois idées pour l'onboarding et elles me semblent toutes identiques.
 Pousse pour de vrai avant que je tranche.
 ```
 
-> [!TIP]
-> Apportez vos propres exclusions. « Pas encore un formulaire » vaut mieux que n'importe quel encouragement — et si vous n'en donnez pas, la compétence les demandera.
-
 ### Ce qu'une session fait vraiment
 
 | Étape | Ce que vous voyez | Ce qui l'impose |
@@ -106,6 +103,86 @@ Pousse pour de vrai avant que je tranche.
 | **Familles de questions** (12) | prémisse tue · la version que vous détesteriez · le succès redéfini · la contrainte inversée · pour qui ce n'est pas · ce qui doit rester impossible · le cimetière · ce que ça engage · mondes voisins · comment ça finit · l'échelle où ça casse · la moitié administrative |
 | **Cadres** (40, en 10 catégories) | soustraction · inversion · changement d'acteur · changement d'échelle · changement de temps · économie · maintenance · changement de médium · rituel · l'échec d'abord |
 | **Clichés** | réflexes de pitch, adjectifs creux, et les motifs structurels qui trahissent un positionnement plutôt qu'un concept |
+
+### Votre part
+
+Cette compétence est une conversation, pas une commande. Quatre moments décident si la séance vaut quelque chose, et les quatre vous appartiennent.
+
+**1 · Répondre aux questions de prémisse.** Elles ne ressembleront pas à un recueil de besoins, parce qu'elles n'en sont pas. *« Qui subit ceci sans avoir jamais choisi de l'utiliser ? »* n'est pas une question sur les parties prenantes. Les réponses utiles sont celles qui vous obligent à réfléchir ; celles qui commencent par *« eh bien, évidemment… »* sont exactement la prémisse que la séance cherche. Dites quand même cette phrase évidente — c'est le matériau.
+
+**2 · Signer le contrat d'interdits.** Après trois questions environ, on vous montre six réponses et le **squelette** qu'elles partagent : la structure en dessous, pas la formulation — *un appareil, un flux, une place de marché, un tableau de bord*. On vous demandera :
+
+> « Voici les réponses les moins chères ici, je les retire de la table. Lesquelles aviez-vous déjà en tête, et qu'ajouteriez-vous ? »
+
+Répondez aux deux moitiés. Nommer celle que vous aviez déjà en tête ne coûte rien et constitue souvent la phrase la plus utile de la séance. Ajoutez vos exclusions sous la forme qui vient — *« rien qui ajoute du temps d'écran au chevet »* convient parfaitement, même si aucun script ne peut la vérifier : la barrière l'enregistre comme contrôle manuel et ne laissera pas passer la spécification tant qu'elle n'aura pas de réponse écrite.
+
+**3 · Le siège inconfortable.** L'une des trois approches est délibérément celle que vous êtes censé refuser, et elle est défendue avec le même soin que les autres. Refusez-la si elle est mauvaise — mais dites *pourquoi*, en une phrase. Cette phrase déplace en général le concept davantage que le choix du gagnant.
+
+**4 · La barrière de relecture.** La spécification est écrite dans un fichier et vous revient avec un *« lisez-la et dites-moi quoi changer »*. Ce n'est pas une formalité. Les barrières vérifient que le travail a été fait, pas que le concept est juste — voir ci-dessous.
+
+### Les trois choses à dire
+
+**Quand toutes les options se ressemblent :**
+
+```text
+Ça reste une seule idée en trois costumes. Régénère.
+```
+
+Elle redistribue depuis un nouveau tirage, ajoute *tous les éléments du tour précédent* au contrat et supprime une prémisse de plus de l'excavation — puis vous dit laquelle. Cette dernière ligne est l'essentiel.
+
+**Quand la réponse conventionnelle est effectivement la bonne :** dites-le. La compétence est tenue d'acquiescer en une phrase, de sortir d'elle-même et de faire le travail ordinaire à l'extérieur. Un formulaire de connexion n'a pas besoin d'excavation de prémisses, et il est interdit à la compétence de prétendre le contraire.
+
+**Quand le brief est trop gros :** la reconnaissance devrait l'attraper, mais sinon — *« ce sont trois systèmes, sépare-les »* — chaque morceau reçoit sa propre séance et sa propre spécification.
+
+### Exécuter les scripts à la main
+
+Python 3.11, bibliothèque standard, rien à installer. Les scripts sont dans `skills/imagination-brainstorming/scripts/` ; écrivez les fichiers de travail dans un répertoire temporaire, jamais dans le dossier de la compétence.
+
+```bash
+# 1 · distribuer les familles de questions et trois cadres incompatibles
+python3 scripts/deal.py --brief "une façon de passer les transmissions dans le service" --run 1 --out /tmp/work
+
+# 2 · construire le contrat — deux fois, et l'ordre compte
+python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
+    --skeleton "une liste remplie à la fin du poste" --out /tmp/work
+#    …montrez-la à l'utilisateur, recueillez sa réponse, et seulement ensuite :
+python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
+    --skeleton "une liste remplie à la fin du poste" \
+    --user exclusions.txt --confirmed --out /tmp/work
+
+# 3 · prouver que les trois approches en sont bien trois
+python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+
+# 4 · passer à la barrière la spécification, son sidecar et le contrat ensemble — les trois sont requis
+python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
+    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+```
+
+`--confirmed` enregistre un consentement qui a déjà eu lieu. Le poser avant que l'utilisateur ait vu la liste est un mensonge dont dépend tout le reste de la chaîne, et la barrière n'a aucun moyen de le détecter — d'où deux appels plutôt qu'un drapeau.
+
+`cliche_lint.py` sert aux **brouillons en cours de séance**. Lancé sur une spécification terminée, il signalera la propre section d'interdits du document ; celui qui relit une spécification terminée, c'est `spec_gate.py`, qui excise d'abord ce passage.
+
+### Codes de sortie, et quoi faire de chacun
+
+| Code | Signification | Le correctif |
+|---|---|---|
+| `0` | passé | — |
+| `1` | usage, fichier manquant ou paquet mal formé | une coquille, pas un jugement |
+| `2` | **le contrat ou la spécification est incomplet** — trop peu de réflexes, pas de squelette, contrat non signé, section absente, contrôle manuel sans réponse écrite, ou spécification qui ne contient pas réellement son propre sidecar | faites le travail manquant |
+| `3` | **les approches sont des variantes**, ou du matériel interdit est présent | réécrivez, ou redistribuez avec `--run 2` et reconstruisez |
+
+### Ce que les barrières ne peuvent pas vérifier
+
+> [!IMPORTANT]
+> Ce sont des planchers. Elles prouvent que le travail a **été fait**, pas qu'il était **juste**. Trois choses passent toutes les barrières de ce dépôt :
+>
+> - **une justification qui retourne sa propre preuve** — un argument dont la prémisse, lue attentivement, soutient la conclusion inverse ;
+> - **un mécanisme attaquable selon ses propres termes** — par exemple un nombre qui change selon l'ordre de calcul, présenté comme la preuve de transparence du concept ;
+> - **trois approches qui n'en font qu'une** en trois vocabulaires. Le contrôle attrape la reformulation et les causes de mort communes ; il ne sait pas lire.
+>
+> Les trois se sont produites pendant la séance d'essai de cette compétence, et les trois ont été attrapées par une personne, pas par un script. Donc : avant que la spécification ne vous parvienne, faites-la attaquer par un second lecteur — un autre modèle, un collègue — en lui demandant d'argumenter qu'**elle perd**, pas qu'elle pourrait être améliorée. « Comment l'améliorer » vous rapporte du polissage. « Pourquoi perd-elle » vous rapporte la prémisse inversée.
+>
+> La compétence s'applique aussi à elle-même un **audit du sens de la preuve** : pour chaque *parce que* porteur, elle doit écrire la conclusion opposée que la même prémisse soutiendrait, et nommer ce que la partie décisionnaire peut réellement observer. C'est l'étape qui attrape *« le jury est une machine, donc notre registre interne est le différenciateur »* — une machine ne peut pas observer le registre interne, donc cette prémisse plaide pour l'inverse.
 
 ## Ce qu'elle ne fera pas
 
