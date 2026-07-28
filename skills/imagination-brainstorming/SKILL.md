@@ -222,8 +222,17 @@ All three arguments are required, and they must belong to the same session: the
 gate checks that the ban list you pass is confirmed, carries the same skeleton
 as `concept.json`, and contains the instincts the sidecar claims. Passing a
 different or unconfirmed contract fails. It also checks that the written spec
-actually contains the concept - the refusal, the first-use scene and the open
-questions - rather than ten section markers with prose under them.
+actually asserts the concept. The refusal, what becomes impossible, the
+first-use scene and every open question are marked with
+`<!-- bind: <field> -->` ... `<!-- /bind -->` and compared to the sidecar
+exactly - each exactly once, inside its own section, as plain prose. A
+similarity score was tried first and could not separate a proposition being
+asserted from the same words quoted inside a sentence that rejects them.
+
+There is no `--allow` on this gate or on `divergence_check.py`. An exception
+granted at verdict time is granted by the party the verdict is about; a real
+one is made once while the contract is being built, recorded there with a
+reason, shown to the user before they confirm it, and inherited from then on.
 
 Then read it once yourself with fresh eyes: placeholders, contradictions between
 sections, requirements that could be read two ways, scope that should have been

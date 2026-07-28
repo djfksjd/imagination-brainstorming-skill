@@ -27,13 +27,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any
 
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, passage_coverage, read_json_arg, require_mapping,
+        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
         text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
@@ -42,7 +43,7 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, die, distinct_ratio, jaccard,
-        load_banlist, load_deck, lint_text, normalize, passage_coverage, read_json_arg, require_mapping,
+        load_banlist, load_deck, lint_text, normalize, read_json_arg, require_mapping,
         text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
@@ -63,7 +64,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--concept", required=True, help="concept.json, or '-'")
     p.add_argument("--markdown", required=True, help="the written spec; required - the gate is about this file")
     p.add_argument("--banlist", required=True, help="banlist.json from banlist.py")
-    p.add_argument("--allow", default=None, help="comma-separated lint entry ids to ignore")
+    # No --allow here. An exception granted at verdict time is granted by the
+    # same party the verdict is about, which is the identical bypass as a
+    # threshold override. A legitimate exception is made once, while the ban
+    # contract is being built (banlist.py --allow), recorded there with an id
+    # and a reason, shown to the user before they confirm it, and inherited by
+    # every later gate.
     p.add_argument("--json", action="store_true", help="emit the verdict as JSON")
     return p
 
@@ -149,7 +155,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
     thresholds = schema["thresholds"]
 
     brief = text_of(concept.get("brief"))
-    if len(brief) < mins["brief"]:
+    if text_units(brief) < mins["brief"]:
         failures.append(f"brief: needs at least {mins['brief']} chars - state what was asked and what you learned it actually is")
     check_padding("brief", brief, thresholds["min_distinct_ratio"], failures)
 
@@ -216,7 +222,7 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             if len(distinct) < counts["min_model_instincts"]:
                 failures.append("banlist_contract.model_instincts: duplicates - the list must hold distinct answers")
         skeleton = text_of(contract.get("skeleton"))
-        if len(skeleton) < mins["skeleton"]:
+        if text_units(skeleton) < mins["skeleton"]:
             failures.append(f"banlist_contract.skeleton: needs at least {mins['skeleton']} chars naming the shared structure")
         if contract.get("user_confirmed") is not True:
             failures.append(
@@ -429,6 +435,42 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
     return {"failures": failures, "warnings": warnings}
 
 
+
+BIND = re.compile(r"<!--\s*bind:\s*([A-Za-z0-9_.\[\]]+)\s*-->(.*?)<!--\s*/bind\s*-->", re.S)
+_QUOTED = re.compile(r"^\s*(?:>|```|~~)", re.M)
+
+
+def canonical(text: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", text).split())
+
+
+def bound_blocks(markdown: str) -> dict[str, list[tuple[str, int]]]:
+    """Marked assertions, with where each one starts.
+
+    The offset matters: a binding satisfied by text sitting in the ban list or
+    the decision log is not the spec asserting it.
+    """
+    out: dict[str, list[tuple[str, int]]] = {}
+    for match in BIND.finditer(markdown):
+        out.setdefault(match.group(1), []).append((match.group(2), match.start()))
+    return out
+
+
+def _is_quoted(body: str) -> bool:
+    return bool(_QUOTED.search(body))
+
+
+def _inside_section(markdown: str, offset: int, section: str) -> bool:
+    marks = [(m.start(), m.group(1).lower()) for m in SECTION_MARKER.finditer(markdown)]
+    current = None
+    for start, name in marks:
+        if start <= offset:
+            current = name
+        else:
+            break
+    return current == section
+
+
 def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     thresholds = schema["thresholds"]
@@ -463,31 +505,53 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
         elif distinct_ratio(shown) < schema["thresholds"]["min_distinct_ratio"]:
             failures.append(f"markdown: section '{name}' is repeated filler rather than content")
 
-    # The document must actually contain the concept it is the spec for.
-    # Requiring the file to exist proved nothing while any ten paragraphs
-    # carrying the right markers would pass.
-    # Each field is looked for in the section that is supposed to carry it, not
-    # anywhere in the file. Searching the whole document lets a refusal quoted in
-    # the ban list, or an alternative recorded in the decision log as rejected,
-    # satisfy a binding for a section that never mentions it.
-    bodies = {name: visible_text(body) for name, body in found}
+    # The document must actually contain the concept it is the spec for, and
+    # "contain" cannot be a similarity score. A fuzzy match cannot tell the
+    # difference between a proposition being asserted and the same words being
+    # quoted inside a sentence that rejects them - "we considered 'X' but
+    # ultimately allow it" scored a perfect match against X. So the assertions
+    # are marked, and compared exactly.
+    spans = bound_blocks(markdown)
+    section_of = {name: body for name, body in found}
     chosen = concept.get("chosen") if isinstance(concept.get("chosen"), dict) else {}
     bindings = [
         ("chosen.forbids", text_of(chosen.get("forbids")), "concept"),
+        ("chosen.impossible_now", text_of(chosen.get("impossible_now")), "concept"),
         ("first_use_scene", text_of(concept.get("first_use_scene")), "first-use"),
     ]
-    for i, q in enumerate(concept.get("open_questions", [])[:2]):
+    questions = concept.get("open_questions")
+    for i, q in enumerate(questions if isinstance(questions, list) else []):
         bindings.append((f"open_questions[{i}]", text_of(q), "open-questions"))
+
     for label, value, section in bindings:
         if not value:
             continue
-        if passage_coverage(value, bodies.get(section, "")) < thresholds["min_passage_coverage"]:
+        blocks = spans.get(label)
+        if not blocks:
             failures.append(
-                f"markdown: section '{section}' does not contain {label} from the sidecar - the written "
-                "spec and concept.json must be the same piece of work. Token overlap is not enough here: "
-                "the passage itself has to appear in the section that is supposed to carry it, because in "
-                "a long spec the words of any paragraph are scattered through the rest."
-            )
+                f"markdown: no <!-- bind: {label} --> block. The spec has to assert this in its own "
+                "body, marked, so the gate is reading an assertion rather than guessing from word overlap")
+            continue
+        if len(blocks) > 1:
+            failures.append(f"markdown: <!-- bind: {label} --> appears {len(blocks)} times; it must appear once")
+            continue
+        body, offset = blocks[0]
+        if canonical(visible_text(body)) != canonical(value):
+            failures.append(
+                f"markdown: the <!-- bind: {label} --> block is not what concept.json says. If the wording "
+                "was revised or translated, update the sidecar to the delivered wording and re-gate")
+        if not _inside_section(markdown, offset, section):
+            failures.append(
+                f"markdown: <!-- bind: {label} --> is not inside the '{section}' section - a refusal "
+                "quoted in the ban list or logged as rejected is not the same as one the spec makes")
+        if _is_quoted(body):
+            failures.append(
+                f"markdown: the <!-- bind: {label} --> block is a quotation or a struck-through line. "
+                "A bound assertion must be plain prose the spec is making in its own voice")
+
+    unknown = sorted(k for k in spans if k not in {b[0] for b in bindings})
+    if unknown:
+        failures.append(f"markdown: bind blocks for fields that are not bindable: {', '.join(unknown)}")
 
     for marker in schema["placeholder_markers"]:
         if re.search(rf"(?<![\w]){re.escape(marker)}(?![\w])", normalize(markdown)):
@@ -518,7 +582,7 @@ def main(argv: list[str] | None = None) -> int:
         ) + "\n" + lintable_markdown(markdown)
         findings = lint_text(
             blob, banlist.get("entries", []), banlist.get("structural_patterns", []),
-            set(csv_list(args.allow)),
+            set(),
         )
         banned = [f for f in findings if f["tier"] == "ban"]
         if banned:

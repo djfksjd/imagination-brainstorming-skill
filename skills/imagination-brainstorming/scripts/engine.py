@@ -20,7 +20,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 DECK_DIR = SKILL_DIR / "references" / "decks"
@@ -257,6 +257,15 @@ def coverage(needle: str, haystack: str) -> float:
 
 def passage_coverage(needle: str, haystack: str, window: int = 24, step: int = 12) -> float:
     """How much of `needle` appears in `haystack` as contiguous passages.
+
+    No longer used by a gate. It was the second attempt at binding the written
+    spec to its sidecar - better than token overlap, which passed a section that
+    had been replaced wholesale - but still a similarity score, and a similarity
+    score cannot tell a proposition being asserted from the same words quoted
+    inside a sentence that rejects them. Marked assertions replaced it. Kept
+    because it is a reasonable "is this passage actually in there" measure for
+    drafting, and because the tests that pin its two known holes are worth
+    keeping.
 
     Token containment is not enough to ask "does this document contain this
     passage": in a long, thorough spec the words of any one paragraph are

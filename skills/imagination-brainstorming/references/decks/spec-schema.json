@@ -1,6 +1,6 @@
 {
   "deck": "spec-schema",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "note": "What spec_gate.py enforces on concept.json and the written spec. The gate cannot judge whether a concept is good, and it does not pretend to: what it proves is that the work which makes a concept usable - premises tested, instincts burned with the user's agreement, three genuinely different approaches, a stated refusal, named neighbours, honest open questions - was not skipped, and that the finished spec exists, contains the concept it specifies, and does not restate the very skeleton the session banned. The passage threshold is calibrated on real drafts: a reworded but present passage scored 0.42 and a wholesale replacement scored 0.00, so 0.35 separates rewriting from removing without forcing an author to copy the sidecar verbatim.",
   "placeholder_markers": [
     "tbd",
@@ -50,8 +50,7 @@
   "thresholds": {
     "min_distinct_ratio": 0.3,
     "max_skeleton_overlap": 0.6,
-    "max_field_similarity": 0.85,
-    "min_passage_coverage": 0.35
+    "max_field_similarity": 0.85
   },
   "required_markdown_sections": [
     {
@@ -101,5 +100,6 @@
     "imagination-engine",
     "stop"
   ],
-  "units_note": "Minimums are counted in units, not code points: a CJK letter or digit counts as two, because one Han character or Hangul syllable carries roughly what two Latin letters carry. Counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for."
+  "units_note": "Minimums are counted in units, not code points: a CJK letter or digit counts as two, because one Han character or Hangul syllable carries roughly what two Latin letters carry. Counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese, which is the opposite of what these floors are for.",
+  "bindings_note": "Assertions the written spec must make in its own voice, marked with <!-- bind: <field> --> ... <!-- /bind --> and compared exactly after NFKC and whitespace collapse. A similarity score was tried first and could not tell the difference between a proposition being asserted and the same words appearing inside a sentence that rejects them - \"we considered 'X' but ultimately allow it\" scored a perfect match against X. Bound fields: chosen.forbids, chosen.impossible_now, first_use_scene, and every open_questions[i]. Each must appear exactly once, inside its designated section, as plain prose rather than a quotation or a struck-through line."
 }

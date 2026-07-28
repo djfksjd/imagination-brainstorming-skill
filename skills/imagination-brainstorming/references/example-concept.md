@@ -45,14 +45,26 @@ The handover assembles itself all shift from orders placed, medication given, ca
 
 Each line must carry **either** an outstanding duty with a named owner and a deadline, **or** an explicit statement that nothing is outstanding, stamped with who checked and when.
 
-**What it forbids:** composing a handover from scratch, and expressing "nothing to report" without a name and a timestamp against it. Bulk acceptance of the draft is refused by design — this costs the ward real minutes every shift and will be the first thing anyone asks to remove.
+**What it forbids:**
+
+<!-- bind: chosen.forbids -->
+It forbids composing a handover from scratch, and it forbids the state 'nothing to report' from being expressible without a name and a timestamp attached. Bulk acceptance of the draft is refused by design, which costs the ward real minutes on every shift and will be the first thing anyone asks to remove.
+<!-- /bind -->
+
+**What becomes impossible:**
+
+<!-- bind: chosen.impossible_now -->
+Passing a patient to the next shift with no statement about them at all becomes impossible; silence is no longer a valid handover state.
+<!-- /bind -->
 
 **The boring half:** eleven lines a shift; the ten minutes at the station; the escalation path when a duty passes its deadline twice; the monthly reconciliation of duties that were inherited but never closed.
 
 <!-- section: first-use -->
 ## First contact
 
-19:12, station desk, the ward still loud from a late admission. The screen already holds tonight's handover: eleven patients, one line each, none of them written by her. The fourth line says an ultrasound request has been unacknowledged since 14:40, which she had forgotten entirely. The seventh says nothing is outstanding for bed 7, and it will not let her past until she puts her name and the time against that claim — so she walks over and actually looks at bed 7 before coming back and stamping it. At 19:20 the incoming nurse sits down beside her and they go through the four lines that changed, not the eleven that did not. The patient in bed 3, awake, hears her own line read out and says the pain relief was an hour ago, not two. It is corrected in front of her.
+<!-- bind: first_use_scene -->
+19:12, station desk, the ward still loud from a late admission. The screen already holds tonight's handover: eleven patients, each one line, none of them written by her. She reads down and the fourth line says an ultrasound request is still unacknowledged since 14:40, which she had forgotten entirely. The seventh line says nothing is outstanding for bed 7, and it will not let her move past it until she puts her name and the time against that claim, so she walks over and actually looks at bed 7 before coming back and stamping it. At 19:20 the incoming nurse sits down beside her and they go through the four lines that changed, not the eleven that did not. The patient in bed 3, awake, hears her own line read out and says the pain relief was an hour ago, not two, and the line is corrected in front of her.
+<!-- /bind -->
 
 <!-- section: neighbours -->
 ## Nearest existing things
@@ -64,9 +76,9 @@ Each line must carry **either** an outstanding duty with a named owner and a dea
 <!-- section: open-questions -->
 ## Open questions
 
-1. Will the trust accept a corrected auto-assembled draft as the legal record without a separate countersignature, or does that force a second artefact?
-2. What is the silent error rate — how often is a wrong line accepted unchanged — and can it be measured without scoring individual nurses, which the ward has ruled out?
-3. Who inherits a duty when the next shift is short-staffed and nobody can be named as its owner?
+1. <!-- bind: open_questions[0] -->Will the trust accept a corrected auto-assembled draft as the legal record without a separate countersignature, or does that force a second artefact?<!-- /bind -->
+2. <!-- bind: open_questions[1] -->What is the silent error rate - how often is a wrong line accepted unchanged - and can it be measured without scoring individual nurses, which the ward has ruled out?<!-- /bind -->
+3. <!-- bind: open_questions[2] -->Who inherits a duty when the next shift is short-staffed and nobody can be named as its owner?<!-- /bind -->
 
 <!-- section: decisions -->
 ## Decision log

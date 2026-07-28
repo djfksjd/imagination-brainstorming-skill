@@ -366,7 +366,7 @@ def test_a_spec_missing_the_refusal_fails(gate, concept_path, example, tmp_path,
     md.write_text(spec[:start.end()] + "\n" + filler + "\n\n" + spec[end.start():], encoding="utf-8")
     res = gate(concept_path(example), "--markdown", str(md), "--json")
     assert res.code == 2
-    assert any("does not contain chosen.forbids" in f for f in res.json()["failures"])
+    assert any("no <!-- bind: chosen.forbids -->" in f for f in res.json()["failures"])
 
 
 def test_the_tail_of_a_passage_is_checked():
@@ -383,33 +383,50 @@ def test_the_tail_of_a_passage_is_checked():
     assert passage_coverage(reversed_tail, original) < 1.0, "the tail was never being compared"
 
 
-def test_a_binding_is_checked_against_its_own_section(run, tmp_path, references, banlist):
-    """Searching the whole document let a refusal quoted in the ban list, or an
-    alternative recorded as rejected in the decision log, satisfy a binding for
-    a section that never mentions it."""
-    import json as _json
-    import re as _re
-    concept = _json.loads((references / "example-concept.json").read_text(encoding="utf-8"))
+def test_a_binding_outside_its_own_section_is_caught(run, tmp_path, references, banlist):
+    """A refusal quoted in the ban list, or logged in the decision record as
+    rejected, is not the same as one the spec makes."""
+    import re as _re  # noqa: PLC0415
+
     markdown = (references / "example-concept.md").read_text(encoding="utf-8")
-    forbids = concept["chosen"]["forbids"]
-
-    # Move the refusal out of the concept section and into the decision log.
-    m = _re.search(r"<!-- section: concept -->(.*?)<!-- section: first-use -->", markdown, _re.S)
-    gutted = markdown[:m.start(1)] + (
-        "\n## Concept\n\n"
-        "This section now describes the shape of the thing at length without ever saying what it refuses "
-        "to do, which is the one sentence the sidecar says belongs here. It reads as a complete section "
-        "and it clears every length and padding floor in the schema, because those measure quantity.\n\n"
-    ) + markdown[m.end(1):]
-    gutted = gutted.replace("<!-- section: decisions -->", f"<!-- section: decisions -->\n\n{forbids}\n", 1)
-
+    block = _re.search(r"<!-- bind: chosen\.forbids -->.*?<!-- /bind -->", markdown, _re.S).group(0)
+    moved = markdown.replace(block, "The refusal used to be stated here, at length, in the spec's own voice.")
+    moved = moved.replace("<!-- section: decisions -->", f"<!-- section: decisions -->\n\n{block}\n", 1)
     path = tmp_path / "moved.md"
-    path.write_text(gutted, encoding="utf-8")
+    path.write_text(moved, encoding="utf-8")
     res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
               "--markdown", str(path), "--banlist", str(banlist), "--json")
     assert res.code == 2
-    assert any("section 'concept' does not contain chosen.forbids" in f for f in res.json()["failures"])
+    assert any("is not inside the 'concept' section" in f for f in res.json()["failures"])
 
+
+def test_a_quoted_assertion_does_not_count_as_one(run, tmp_path, references, banlist):
+    """The concrete case: the words are present while the sentence around them
+    rejects the proposition. A similarity score cannot tell those apart."""
+    import re as _re  # noqa: PLC0415
+
+    markdown = (references / "example-concept.md").read_text(encoding="utf-8")
+    quoted = _re.sub(
+        r"(<!-- bind: chosen\.forbids -->\n)(.*?)(\n<!-- /bind -->)",
+        lambda m: m.group(1) + "> " + m.group(2).replace("\n", "\n> ") + m.group(3),
+        markdown, count=1, flags=_re.S)
+    path = tmp_path / "quoted.md"
+    path.write_text(quoted, encoding="utf-8")
+    res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
+              "--markdown", str(path), "--banlist", str(banlist), "--json")
+    assert res.code == 2
+    assert any("in its own voice" in f for f in res.json()["failures"])
+
+
+def test_the_gate_grants_no_exceptions_at_verdict_time(run, references, banlist):
+    """--allow let the same party the verdict is about release the finding that
+    was about to fail. Exceptions belong in the contract, made once, in front
+    of the user."""
+    res = run("spec_gate.py", "--concept", str(references / "example-concept.json"),
+              "--markdown", str(references / "example-concept.md"),
+              "--banlist", str(banlist), "--allow", "cyberpunk")
+    assert res.code == 1
+    assert "unrecognized arguments" in res.err
 
 def test_cjk_prose_is_not_held_to_twice_the_bar():
     """A floor asks for an amount of argument, not an amount of Unicode. One

@@ -225,7 +225,7 @@ def test_markdown_must_contain_the_concept(gate, concept_path, concept, tmp_path
     ), encoding="utf-8")
     res = gate(concept_path(concept), "--markdown", str(md), "--json")
     assert res.code == 2
-    assert any("must be the same piece of work" in f for f in res.json()["failures"])
+    assert any("no <!-- bind: chosen.forbids -->" in f for f in res.json()["failures"])
 
 
 def test_empty_sections_fail(gate, concept_path, concept, tmp_path, decks):

@@ -31,22 +31,22 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, die, distinct_ratio, jaccard, load_banlist, load_deck,
-        lint_text, normalize, read_json_arg,
+        lint_text, normalize, read_json_arg, text_units,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, die, distinct_ratio, jaccard, load_banlist, load_deck,
-        lint_text, normalize, read_json_arg,
+        lint_text, normalize, read_json_arg, text_units,
     )
 
 FAIL_CODE = 3
 DEFAULT_COUNT = 3
 SUMMARY_MAX_OVERLAP = 0.55
 FAILURE_MAX_OVERLAP = 0.50
-MIN_SUMMARY_CHARS = 120
-MIN_FAILURE_CHARS = 60
+MIN_SUMMARY_UNITS = 120
+MIN_FAILURE_UNITS = 60
 DETAIL_RATIO = 0.4  # shortest summary must be at least this fraction of the longest
 MIN_DISTINCT_RATIO = 0.3
 
@@ -57,7 +57,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--banlist", default=None, help="banlist.json; approaches are linted against it when given")
     p.add_argument("--count", type=int, default=DEFAULT_COUNT,
                    help=f"how many approaches are expected (default and minimum {DEFAULT_COUNT})")
-    p.add_argument("--allow", default=None, help="comma-separated lint entry ids to ignore")
+    # No --allow here. An exception granted at verdict time is granted by the
+    # same party the verdict is about, which is the identical bypass as a
+    # threshold override. A legitimate exception is made once, while the ban
+    # contract is being built (banlist.py --allow), recorded there with an id
+    # and a reason, shown to the user before they confirm it, and inherited by
+    # every later gate.
     p.add_argument("--json", action="store_true", help="emit the verdict as JSON")
     return p
 
@@ -109,10 +114,10 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
             failures.append(f"{label}: unknown frame_id '{frame_id}'")
         else:
             categories.append(frame_table[frame_id]["category"])
-        if len(text_of(a.get("summary"))) < MIN_SUMMARY_CHARS:
-            failures.append(f"{label}: summary under {MIN_SUMMARY_CHARS} chars - too thin to be judged against the others")
-        if len(text_of(a.get("failure_mode"))) < MIN_FAILURE_CHARS:
-            failures.append(f"{label}: failure_mode under {MIN_FAILURE_CHARS} chars - state how this one actually fails here")
+        if text_units(text_of(a.get("summary"))) < MIN_SUMMARY_UNITS:
+            failures.append(f"{label}: summary under {MIN_SUMMARY_UNITS} units - too thin to be judged against the others")
+        if text_units(text_of(a.get("failure_mode"))) < MIN_FAILURE_UNITS:
+            failures.append(f"{label}: failure_mode under {MIN_FAILURE_UNITS} units - state how this one actually fails here")
         if "unsafe" in a:
             # One field, one meaning. The alias let an approach be seated in the
             # check while every documented unsafe_seat field said false.
@@ -210,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             lint_findings = lint_text(
                 blob, banlist.get("entries", []), banlist.get("structural_patterns", []),
-                set(csv_list(args.allow)),
+                set(),
             )
             banned = [f for f in lint_findings if f["tier"] == "ban"]
             if banned:

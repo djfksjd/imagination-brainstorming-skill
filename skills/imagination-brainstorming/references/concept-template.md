@@ -96,3 +96,25 @@ to know what was already ruled out and on what grounds.
 What this spec does not cover, and what happens next: `writing-plans`,
 `imagination-engine`, or stop.
 ```
+
+## Bound assertions
+
+Four kinds of statement are marked so the gate reads an assertion rather than
+guessing from word overlap:
+
+```markdown
+**What it forbids:**
+
+<!-- bind: chosen.forbids -->
+The refusal, word for word as it appears in concept.json.
+<!-- /bind -->
+```
+
+`chosen.forbids` and `chosen.impossible_now` belong in the concept section,
+`first_use_scene` in the first-use section, and every `open_questions[i]` in the
+open-questions section. Each appears exactly once, inside its own section, as
+plain prose - not inside a blockquote, a code fence, or a struck-through line.
+The comparison is exact after Unicode normalization and whitespace collapse, so
+revising or translating the wording means updating `concept.json` to the
+delivered wording before gating. See `references/example-concept.md`.
+

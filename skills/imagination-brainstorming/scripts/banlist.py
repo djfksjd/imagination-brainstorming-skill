@@ -31,18 +31,18 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_deck, normalize,
-        read_text_arg, write_json,
+        read_text_arg, text_units, write_json,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_deck, normalize,
-        read_text_arg, write_json,
+        read_text_arg, text_units, write_json,
     )
 
 MIN_INSTINCTS = 8
-MIN_SKELETON_CHARS = 40
+MIN_SKELETON_UNITS = 40
 MATCHABLE_MAX_WORDS = 6
 BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)])\s*")
 GATE_FAIL = 2
@@ -106,10 +106,10 @@ def build_contract(args: argparse.Namespace, cliches: dict[str, Any]) -> dict[st
             "Writing down what you would have said is what makes it unavailable; a short list means the "
             "familiar answers are still on the table.",
         )
-    if len(args.skeleton.strip()) < MIN_SKELETON_CHARS:
+    if text_units(args.skeleton.strip()) < MIN_SKELETON_UNITS:
         raise EngineError(
             "--skeleton must name the structure the instincts share, in a sentence "
-            f"(at least {MIN_SKELETON_CHARS} characters). The skeleton is the real target: without it you "
+            f"(at least {MIN_SKELETON_UNITS} units). The skeleton is the real target: without it you "
             "ban twelve phrasings and accept the thirteenth version of the same idea."
         )
 

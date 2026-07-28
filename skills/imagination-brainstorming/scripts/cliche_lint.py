@@ -45,7 +45,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--draft", required=True, help="draft file, or '-' for stdin")
     p.add_argument("--banlist", default=None, help="banlist.json from banlist.py")
     p.add_argument("--deck-only", action="store_true", help="lint against deck defaults without a contract")
-    p.add_argument("--allow", default=None, help="comma-separated entry ids to ignore for this run")
+    p.add_argument("--allow", default=None,
+                   help="entry ids to ignore for this run. This is a drafting aid: spec_gate.py has "
+                        "no such flag, so anything released here still has to clear the real gate")
     p.add_argument("--strict", action="store_true", help="treat warnings as failures too")
     p.add_argument("--json", action="store_true", help="emit findings as JSON")
     return p
