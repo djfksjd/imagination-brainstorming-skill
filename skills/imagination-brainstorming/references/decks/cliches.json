@@ -1,11 +1,11 @@
 {
   "deck": "cliches",
   "version": "0.3.0",
-  "note": "Default forbidden moves for concept work. 'ban' entries fail the lint (exit 3); 'warn' entries are reported only. Release a term with --allow <id> when the user genuinely asked for it - the point is that using it becomes a decision rather than a default. These are pitch-deck reflexes: words that claim a property instead of demonstrating it.",
+  "note": "Default forbidden moves for concept work. Read the two halves separately. The phrase list and the structural patterns are pitch-and-product vocabulary - one-stop shop, KPI dashboard, Uber for X - and on a story, world, ritual or mechanic brief most of them will never fire; that is expected, and it means the machine-checkable half of the contract is doing little on such a brief, while the session's own instincts and skeleton do the work. The hollow adjectives and the forbidden moves apply to any subject. A banned word being quoted or denied rather than used is marked in place with <!-- mention: <id> -->; there is no blanket release. 'ban' entries fail the lint (exit 3); 'warn' entries are reported only. Release a term with --allow <id> when the user genuinely asked for it - the point is that using it becomes a decision rather than a default. These are pitch-deck reflexes: words that claim a property instead of demonstrating it.",
   "hollow_adjectives": {
     "ban": ["seamless", "frictionless", "revolutionary", "game-changing", "cutting-edge", "next-generation", "best-in-class", "world-class", "state-of-the-art", "innovative", "disruptive", "groundbreaking", "effortless", "magical", "delightful", "turnkey", "holistic", "synergistic", "unparalleled"],
     "warn": ["intuitive", "robust", "scalable", "powerful", "simple", "elegant", "curated", "bespoke", "immersive", "unique", "smart"],
-    "why": "Each of these asserts a quality the concept has not yet earned. If the sentence collapses when the adjective is removed, the adjective was carrying the concept."
+    "why": "Each of these asserts a quality the concept has not yet earned. If the sentence collapses when the adjective is removed, the adjective was carrying the concept. Some of them - magical, delightful, immersive - are ordinary vocabulary in fiction, where the word denotes rather than claims; mark that use with <!-- mention: hollow-magical --> rather than editing the deck."
   },
   "phrases": [
     { "id": "one-stop-shop", "phrase": "one-stop shop", "group": "pitch-reflex", "tier": "ban" },

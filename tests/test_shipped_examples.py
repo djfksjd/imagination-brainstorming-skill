@@ -98,6 +98,7 @@ def test_the_approaches_schema_documents_every_field_the_check_reads(decks, refe
     ("DEFAULT_COUNT", ("counts", "approaches")),
     ("MIN_SUMMARY_UNITS", ("min_units", "summary")),
     ("MIN_FAILURE_UNITS", ("min_units", "failure_mode")),
+    ("MIN_FRAME_FIT_UNITS", ("min_units", "frame_fit")),
     ("SUMMARY_MAX_OVERLAP", ("thresholds", "max_summary_overlap")),
     ("FAILURE_MAX_OVERLAP", ("thresholds", "max_failure_overlap")),
     ("DETAIL_RATIO", ("thresholds", "min_detail_ratio")),
@@ -108,3 +109,71 @@ def test_the_deck_and_the_script_agree(decks, constant, path):
     the code turns it into a description of a program that no longer exists."""
     section, key = path
     assert getattr(divergence_check, constant) == decks["approaches-schema"][section][key]
+
+
+# --- the worked example that is not a product or a service -----------------
+#
+# The decks, the four original examples and the manual-check calibration were
+# all built on one hospital-ward service, and it showed: the gate workload and
+# half the deck vocabulary only make sense for a product. The ritual example
+# below is shipped so that a stranger on a story, world, ritual or mechanic
+# brief has something to copy the shape from. It is gated by the same commands.
+
+RITUAL_BRIEF = "a ritual for closing a family bakery that has traded on one street for ninety years"
+RITUAL_SKELETON = (
+    "A gathering held on the final trading day at which the shop is thanked, photographed and "
+    "remembered aloud, ending with an object handed over to be kept."
+)
+
+
+def test_the_ritual_example_passes_the_gate(run, references):
+    res = run(
+        "spec_gate.py",
+        "--concept", str(references / "example-ritual-concept.json"),
+        "--markdown", str(references / "example-ritual-concept.md"),
+        "--banlist", str(references / "example-ritual-banlist.json"),
+    )
+    assert res.code == 0, res
+    assert "PASSED" in res.out
+
+
+def test_the_ritual_approaches_pass_the_divergence_check(run, references):
+    res = run(
+        "divergence_check.py",
+        "--approaches", str(references / "example-ritual-approaches.json"),
+        "--banlist", str(references / "example-ritual-banlist.json"),
+    )
+    assert res.code == 0, res
+
+
+def test_the_ritual_contract_is_what_banlist_py_produces(run, tmp_path, references):
+    res = run(
+        "banlist.py", "--brief", RITUAL_BRIEF,
+        "--instincts", str(references / "example-ritual-instincts.txt"),
+        "--user", str(references / "example-ritual-exclusions.txt"),
+        "--skeleton", RITUAL_SKELETON, "--confirmed", "--out", str(tmp_path),
+    )
+    assert res.code == 0, res
+    rebuilt = json.loads((tmp_path / "banlist.json").read_text(encoding="utf-8"))
+    shipped = json.loads((references / "example-ritual-banlist.json").read_text(encoding="utf-8"))
+    assert rebuilt == shipped
+
+
+def test_the_ritual_example_is_not_about_a_product(references):
+    """The point of shipping it. If this file ever acquires users, a roadmap and
+    a dashboard, the skill has quietly become a product tool again."""
+    text = (references / "example-ritual-concept.md").read_text(encoding="utf-8").lower()
+    for word in ("user", "customer journey", "roadmap", "launch", "kpi", "onboarding"):
+        assert word not in text.split("<!-- section: banlist -->")[0], word
+
+
+def test_the_ritual_example_shows_the_gate_naming_its_own_limits(run, references):
+    res = run(
+        "spec_gate.py",
+        "--concept", str(references / "example-ritual-concept.json"),
+        "--markdown", str(references / "example-ritual-concept.md"),
+        "--banlist", str(references / "example-ritual-banlist.json"), "--json",
+    )
+    warnings = " | ".join(res.json()["warnings"])
+    assert "long instincts" in warnings, "a narrative brief produces model-instinct manual checks"
+    assert "the chosen approach fails like this" in warnings
