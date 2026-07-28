@@ -88,6 +88,39 @@ def test_unknown_frame_fails(run, tmp_path, approaches):
     assert any("unknown frame_id" in f for f in res.json()["failures"])
 
 
+def test_category_used_as_frame_id_is_refused_by_name(run, tmp_path, approaches):
+    """Reproduces the live-use defect: deal.py's printed output shows each
+    approach as '[category] label', and a user who reads only that output
+    writes the category into approaches[].frame_id. The category is never a
+    valid frame_id (every category holds several frames), so this must be
+    refused with a message naming the real candidates - not a bare 'unknown
+    frame_id', and never a silent guess at which frame was meant."""
+    approaches[0]["frame_id"] = "subtraction"  # a category, not a frame id
+    res = run("divergence_check.py", "--approaches", write(tmp_path, approaches), "--json")
+    assert res.code == 3
+    failures = res.json()["failures"]
+    match = [f for f in failures if "frame category, not a frame_id" in f]
+    assert match, failures
+    # Every frame in the 'subtraction' category must be named as a candidate.
+    for candidate in ("delete-the-core", "one-thing-only", "no-interface", "no-storage"):
+        assert candidate in match[0]
+
+
+def test_every_frame_category_is_ambiguous_as_a_frame_id(run, tmp_path, approaches, decks):
+    """Guards the fix against a future deck where some category happens to
+    contain only one frame - in that case a category token would resolve
+    unambiguously and this refusal would need to say so instead of listing
+    exactly one candidate as though it were still a choice."""
+    frames = decks["frames"]
+    by_cat: dict[str, list[str]] = {}
+    for f in frames["frames"]:
+        by_cat.setdefault(f["category"], []).append(f["id"])
+    assert all(len(ids) > 1 for ids in by_cat.values()), (
+        "a category with exactly one frame would make this refusal message "
+        "misleading; update it to resolve unambiguous categories instead of listing them"
+    )
+
+
 def test_wrong_count_fails(run, tmp_path, approaches):
     res = run("divergence_check.py", "--approaches", write(tmp_path, approaches[:2]), "--json")
     assert res.code == 3

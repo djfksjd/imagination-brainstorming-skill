@@ -112,6 +112,9 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
         failures.append(f"{len(approaches)} approaches supplied, {count} expected")
 
     frame_table = {f["id"]: f for f in frames["frames"]}
+    frames_by_category: dict[str, list[str]] = {}
+    for f in frames["frames"]:
+        frames_by_category.setdefault(f["category"], []).append(f["id"])
     ids, categories, unsafe = [], [], []
     seen_ids: dict[str, int] = {}
     for i, a in enumerate(approaches):
@@ -126,7 +129,19 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
         if not frame_id:
             failures.append(f"{label}: no frame_id - an approach that came from nowhere cannot be shown to differ")
         elif frame_id not in frame_table:
-            failures.append(f"{label}: unknown frame_id '{frame_id}'")
+            candidates = frames_by_category.get(frame_id)
+            if candidates:
+                # The frame_id supplied is actually a category (the bracketed
+                # token deal.py's printed output shows next to each frame).
+                # A category is not unique - refuse and name the real
+                # frame_ids rather than guessing one.
+                failures.append(
+                    f"{label}: '{frame_id}' is a frame category, not a frame_id - "
+                    f"it is ambiguous between {', '.join(sorted(candidates))}; "
+                    "use the frame_id shown in deal.json's approaches[].frame_id"
+                )
+            else:
+                failures.append(f"{label}: unknown frame_id '{frame_id}'")
         else:
             categories.append(frame_table[frame_id]["category"])
         if text_units(text_of(a.get("summary"))) < min_summary:
