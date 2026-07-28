@@ -28,6 +28,12 @@
       "note": "How this one actually fails in this brief - not the generic hint from the frames deck. At least min_units.failure_mode units. Two approaches that die of the same cause are one approach."
     },
     {
+      "name": "frame_fit",
+      "type": "string",
+      "required": true,
+      "note": "What in this brief plays the part the dealt frame's must_contain names - the sentence people will actually say, the repair procedure and the spare parts, the threshold where the kind of thing changes. At least min_units.frame_fit units, and not the same claim on two approaches. A frame that cannot be occupied by the brief at all is the failure this field exists for: designed-for-repair was dealt into the unsafe seat for a one-off closing rite that happens once, and the check passed the set without comment. Writing what the spare parts of a single rite would be puts the mismatch where the author and the user can both see it. The check requires the claim and cannot check that it is true; if the frame does not fit, say so and redeal with --run 2."
+    },
+    {
       "name": "unsafe_seat",
       "type": "boolean",
       "required": true,
@@ -46,7 +52,8 @@
   },
   "min_units": {
     "summary": 96,
-    "failure_mode": 48
+    "failure_mode": 48,
+    "frame_fit": 40
   },
   "thresholds": {
     "max_summary_overlap": 0.55,

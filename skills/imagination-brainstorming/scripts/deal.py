@@ -140,7 +140,7 @@ def build_deal(args: argparse.Namespace, decks: dict[str, Any]) -> dict[str, Any
         "rules": [
             "Ask one question per message, phrased for this brief in the user's language. Never paste a deck prompt verbatim.",
             "After roughly three questions, write the twelve most likely answers to this brief, name the skeleton they share, and put the compressed list to the user as a list of exclusions - not as suggestions.",
-            "Each approach must occupy its dealt frame, contain what that frame requires, and state how it would actually fail here.",
+            "Each approach must occupy its dealt frame, contain what that frame requires, and state how it would actually fail here. Write that occupancy down in approaches[].frame_id's partner field frame_fit: what in this brief plays the part the frame's include line names. If nothing can - a rite that happens once cannot be repaired by its users - say so and redeal with --run 2 rather than arguing a frame the brief cannot hold.",
             "Exactly one approach sits in the unsafe seat: the one the user will probably reject. Argue for it honestly; a strawman in this seat makes the other two decoys.",
             "Describe all approaches in comparable detail, then give your recommendation and the reason.",
             "The chosen concept must state what it forbids. A design that forbids nothing is a wish list.",
@@ -179,6 +179,7 @@ def render_human(payload: dict[str, Any]) -> str:
         lines.append(f"      move:     {a['move']}")
         lines.append(f"      include:  {a['must_contain']}")
         lines.append(f"      watch:    {a['characteristic_failure']}")
+        lines.append("      fit:      answer the include line in approaches[].frame_fit, or redeal")
     lines.append("")
     lines.append("RULES:")
     for rule in payload["rules"]:

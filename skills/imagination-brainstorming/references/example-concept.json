@@ -69,7 +69,8 @@
       "unsafe_seat": true,
       "chosen": false,
       "summary": "No artefact at all. The ward adopts one fixed spoken sentence per patient, said at the bedside with the patient awake and present: what is outstanding, who it now falls to, and by when. The design is the grammar of that sentence plus the practice around it - the incoming nurse repeats it back, the patient can correct it, and nothing is typed. Training is a laminated card and two weeks of a senior nurse insisting.",
-      "failure_mode": "Nothing durable is produced, so the trust still needs its written record made separately, and spoken discipline is the first thing a short-staffed ward abandons at 03:00. Six weeks in, it survives only on the shifts where the sister who championed it is working."
+      "failure_mode": "Nothing durable is produced, so the trust still needs its written record made separately, and spoken discipline is the first thing a short-staffed ward abandons at 03:00. Six weeks in, it survives only on the shifts where the sister who championed it is working.",
+      "frame_fit": "The sentence people will actually say is \"bed seven, nothing outstanding, I checked it at seven twenty\" - said out loud, to a named colleague, at the bedside rather than the desk, and repeated back before either nurse moves on."
     },
     {
       "id": "ward-ledger",
@@ -77,7 +78,8 @@
       "unsafe_seat": false,
       "chosen": false,
       "summary": "Stop pairing nurses altogether. Every outstanding duty on the ward enters one visible ledger with an owner and an expiry time, and shift change becomes a bulk reassignment event rather than a conversation - designed for a hundred-bed unit or a whole hospital where person-to-person pairing has already broken down. Escalation is automatic when an item passes its expiry twice.",
-      "failure_mode": "An owner-less pool becomes a landfill. Items age, the oldest are quietly ignored, and responsibility spreads thin enough that no individual feels the weight of any particular duty - the precise failure that pairing exists to prevent."
+      "failure_mode": "An owner-less pool becomes a landfill. Items age, the oldest are quietly ignored, and responsibility spreads thin enough that no individual feels the weight of any particular duty - the precise failure that pairing exists to prevent.",
+      "frame_fit": "The threshold where the kind of thing changes is the point at which a ward's outstanding duties stop being one nurse's list and become a pool nobody owns: somewhere past four hundred open items, the ledger is read by whoever has time rather than by whoever is responsible."
     },
     {
       "id": "pre-written",
@@ -85,7 +87,8 @@
       "unsafe_seat": false,
       "chosen": true,
       "summary": "The handover is finished before the shift ends. It assembles itself continuously from what already happened - orders placed, medication given, calls made, results still pending - and by 19:00 a complete draft exists that nobody composed. The outgoing nurse's only act is to correct or refuse it in the last ten minutes at the station, line by line. Each line must carry either an outstanding duty with a named owner and a deadline, or an explicit statement that nothing is outstanding, stamped with who checked and when.",
-      "failure_mode": "Presumption. A draft that is ninety per cent right trains people to skim, and the tenth that is wrong is exactly the unusual thing that mattered. The counter-design is that no line can be accepted in bulk, but that is a bet on friction surviving contact with a busy ward."
+      "failure_mode": "Presumption. A draft that is ninety per cent right trains people to skim, and the tenth that is wrong is exactly the unusual thing that mattered. The counter-design is that no line can be accepted in bulk, but that is a bet on friction surviving contact with a busy ward.",
+      "frame_fit": "The pre-made result comes from what the shift already recorded - orders placed, drugs given, calls made, results still pending - and a wrong line is handled by refusing it in place, one line at a time, so a mistaken draft costs a correction rather than a rewrite."
     }
   ],
   "chosen": {

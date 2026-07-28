@@ -139,3 +139,42 @@ def test_malformed_input_is_a_usage_error(run, tmp_path):
     path = tmp_path / "broken.json"
     path.write_text("{not json", encoding="utf-8")
     assert run("divergence_check.py", "--approaches", str(path)).code == 1
+
+
+# --- whether the frame can be occupied by this brief at all ----------------
+#
+# The check is lexical and says so. But a frame that is *impossible* for the
+# brief is a stronger case than one occupied badly, and it reaches the user:
+# `designed-for-repair` - "assume it breaks often ... the repair procedure and
+# the spare parts" - was dealt into the unsafe seat for a one-off closing rite
+# that happens once and never again, and the set passed without comment. Every
+# frame names one thing its approach must contain, so the approach has to say
+# what plays that part here.
+
+
+def test_an_approach_that_never_says_how_it_occupies_its_frame_is_refused(run, tmp_path, references):
+    approaches = json.loads((references / "example-approaches.json").read_text(encoding="utf-8"))
+    del approaches["approaches"][0]["frame_fit"]
+    path = tmp_path / "approaches.json"
+    path.write_text(json.dumps(approaches, ensure_ascii=False), encoding="utf-8")
+    res = run("divergence_check.py", "--approaches", str(path), "--json")
+    assert res.code == 3, res.out
+    failures = " | ".join(res.json()["failures"])
+    assert "frame_fit" in failures
+    assert "The sentence people will actually say" in failures, "the frame's own requirement is quoted"
+
+
+def test_two_approaches_may_not_share_one_occupancy_claim(run, tmp_path, references):
+    approaches = json.loads((references / "example-approaches.json").read_text(encoding="utf-8"))
+    approaches["approaches"][1]["frame_fit"] = approaches["approaches"][0]["frame_fit"]
+    path = tmp_path / "approaches.json"
+    path.write_text(json.dumps(approaches, ensure_ascii=False), encoding="utf-8")
+    res = run("divergence_check.py", "--approaches", str(path), "--json")
+    assert res.code == 3
+    assert any("identical frame_fit" in f for f in res.json()["failures"])
+
+
+def test_the_check_says_what_frame_fit_cannot_establish(run, references):
+    res = run("divergence_check.py", "--approaches", str(references / "example-approaches.json"), "--json")
+    assert res.code == 0, res.out
+    assert any("cannot check that it is true" in w for w in res.json()["warnings"])

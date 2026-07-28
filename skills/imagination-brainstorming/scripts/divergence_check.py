@@ -51,6 +51,7 @@ SUMMARY_MAX_OVERLAP = 0.55
 FAILURE_MAX_OVERLAP = 0.50
 MIN_SUMMARY_UNITS = 96
 MIN_FAILURE_UNITS = 48
+MIN_FRAME_FIT_UNITS = 40
 DETAIL_RATIO = 0.4  # shortest summary must be at least this fraction of the longest
 MIN_DISTINCT_RATIO = 0.3
 
@@ -96,6 +97,7 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
     schema = load_deck("approaches-schema")
     mins, thresholds = schema["min_units"], schema["thresholds"]
     min_summary = mins["summary"]
+    min_frame_fit = mins["frame_fit"]
     min_failure = mins["failure_mode"]
     max_summary_overlap = thresholds["max_summary_overlap"]
     max_failure_overlap = thresholds["max_failure_overlap"]
@@ -144,6 +146,28 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
                 failures.append(f"{label}: unknown frame_id '{frame_id}'")
         else:
             categories.append(frame_table[frame_id]["category"])
+            # A frame that cannot be occupied by this brief at all is a
+            # stronger case than "does not occupy it well", and it is the one
+            # that reaches the user: `designed-for-repair` ("assume it breaks
+            # often ... the spare parts") was dealt into the unsafe seat for a
+            # one-off closing rite that happens once and never again, and this
+            # check passed the set without comment. Every frame names one thing
+            # its approach must contain, so the approach is made to say what
+            # plays that part here. Writing "the spare parts of a rite that
+            # happens once" puts the mismatch where the author and the user can
+            # both see it. What this cannot do - and it is the same limit as
+            # the overlap scores below - is judge whether the answer is true.
+            # It forces the claim into the open and dates it to the draw.
+            must_contain = frame_table[frame_id]["must_contain"]
+            fit = text_of(a.get("frame_fit"))
+            if text_units(fit) < min_frame_fit:
+                failures.append(
+                    f"{label}: frame_fit under {min_frame_fit} units - the '{frame_id}' frame requires "
+                    f"\"{must_contain}\" Name what plays that part in this brief, or say the frame cannot be "
+                    "occupied here and redeal with --run 2"
+                )
+            elif distinct_ratio(fit) < min_distinct_ratio:
+                failures.append(f"{label}.frame_fit: repeated filler rather than content")
         if text_units(text_of(a.get("summary"))) < min_summary:
             failures.append(f"{label}: summary under {min_summary} units - too thin to be judged against the others")
         if text_units(text_of(a.get("failure_mode"))) < min_failure:
@@ -174,7 +198,8 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
 
     summaries = [text_of(a.get("summary")) for a in approaches]
     failure_modes = [text_of(a.get("failure_mode")) for a in approaches]
-    for field, values in (("summary", summaries), ("failure_mode", failure_modes)):
+    frame_fits = [text_of(a.get("frame_fit")) for a in approaches]
+    for field, values in (("summary", summaries), ("failure_mode", failure_modes), ("frame_fit", frame_fits)):
         seen: dict[str, str] = {}
         for label, value in zip(ids, values):
             key = normalize(value)
@@ -213,6 +238,11 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
     # Synonyms defeat token overlap: three descriptions of one idea, written in
     # different words, score low and pass. Nothing in the standard library can
     # tell them apart, so the honest move is to say so where it will be read.
+    warnings.append(
+        "frame_fit is the author's word that the frame can be occupied by this brief at all - a "
+        "one-off rite cannot be 'designed to be repaired by its users', and that frame has been dealt "
+        "into the unsafe seat before. The check requires the claim; it cannot check that it is true."
+    )
     warnings.append(
         "This check is a floor: it catches restatement, shared failure modes and unequal detail. "
         "It cannot tell whether three descriptions are one idea in three vocabularies - "
