@@ -58,15 +58,35 @@ chosen. A reader must be able to disagree with the choice on the evidence given.
 <!-- section: concept -->
 ## The concept
 
-The chosen direction: how it works, what it refuses to do and at what cost,
-what it makes impossible that the ordinary version allows, and the boring half -
-the recurring task, the sign-off, the queue, the reconciliation.
+The chosen direction: how it works, the boring half - the recurring task, the
+sign-off, the queue, the reconciliation - and the two assertions below, each
+inside its own `<!-- bind: field --> ... <!-- /bind -->` block, word for word
+as they appear in `concept.json`. Both are required; the gate fails if either
+block is missing, even if the surrounding prose says the same thing.
+
+**What it forbids:**
+
+<!-- bind: chosen.forbids -->
+What this design rules out on purpose, and the cost of that refusal.
+<!-- /bind -->
+
+**What is now impossible:**
+
+<!-- bind: chosen.impossible_now -->
+What the ordinary version allows that this one does not.
+<!-- /bind -->
 
 <!-- section: first-use -->
 ## First contact
 
 One concrete scene: a person, a place, a time, what they see and do, where they
-hesitate. Not a description of the concept - a moment of it happening.
+hesitate. Not a description of the concept - a moment of it happening. Wrap the
+whole scene in its own bind block, matching `concept.json`'s `first_use_scene`
+word for word:
+
+<!-- bind: first_use_scene -->
+The scene itself, as plain prose - not a quotation, not a code fence.
+<!-- /bind -->
 
 <!-- section: neighbours -->
 ## Nearest existing things
@@ -79,7 +99,13 @@ found, say what was checked. Never claim nobody has thought of it.
 
 At least two, written so someone could actually answer them. Decoration does not
 count: "how will users respond?" is not a question, "will the trust accept this
-as the legal record without a countersignature?" is.
+as the legal record without a countersignature?" is. Wrap each one in its own
+bind block, numbered to match `concept.json`'s `open_questions` array in order
+- the first question is `open_questions[0]`, the second `open_questions[1]`,
+and so on for however many the session produced:
+
+1. <!-- bind: open_questions[0] -->The first open question, word for word as it appears in concept.json.<!-- /bind -->
+2. <!-- bind: open_questions[1] -->The second open question, word for word as it appears in concept.json.<!-- /bind -->
 
 <!-- section: decisions -->
 ## Decision log
@@ -99,22 +125,19 @@ What this spec does not cover, and what happens next: `writing-plans`,
 
 ## Bound assertions
 
-Four kinds of statement are marked so the gate reads an assertion rather than
-guessing from word overlap:
+Four kinds of statement are marked, in place, above - `chosen.forbids` and
+`chosen.impossible_now` in the concept section, `first_use_scene` in the
+first-use section, every `open_questions[i]` in the open-questions section -
+so the gate reads an assertion rather than guessing from word overlap. This is
+not optional decoration: `spec_gate.py` fails once per missing block, so a spec
+written from this template with a bind block deleted, or left empty, or
+replaced with a plain paragraph, fails on that field alone even if every other
+section is complete.
 
-```markdown
-**What it forbids:**
-
-<!-- bind: chosen.forbids -->
-The refusal, word for word as it appears in concept.json.
-<!-- /bind -->
-```
-
-`chosen.forbids` and `chosen.impossible_now` belong in the concept section,
-`first_use_scene` in the first-use section, and every `open_questions[i]` in the
-open-questions section. Each appears exactly once, inside its own section, as
-plain prose - not inside a blockquote, a code fence, or a struck-through line.
-The comparison is exact after Unicode normalization and whitespace collapse, so
-revising or translating the wording means updating `concept.json` to the
-delivered wording before gating. See `references/example-concept.md`.
+Each block appears exactly once, inside its own section, as plain prose - not
+inside a blockquote, a code fence, or a struck-through line. The comparison is
+exact after Unicode normalization and whitespace collapse, so revising or
+translating the wording means updating `concept.json` to the delivered wording
+before gating. See `references/example-concept.md` for a complete pair that
+passes.
 
