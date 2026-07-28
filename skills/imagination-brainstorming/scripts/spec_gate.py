@@ -149,7 +149,7 @@ def check_padding(label: str, value: str, threshold: float, failures: list[str])
 
 
 def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
-                    cliches: dict[str, Any]) -> list[str]:
+                    cliches: dict[str, Any], warnings: list[str] | None = None) -> list[str]:
     """Rebuild the ban contract from what the sidecar declares and require the
     supplied file to contain it.
 
@@ -200,9 +200,10 @@ def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
             "gets discharged without being answered"
         )
 
-    # The releases are made once, while the contract is being built, and can
-    # only ever release something the bundled deck put there. An instinct or a
-    # user exclusion is not releasable at all: it is checked above by phrase.
+    # `allowed` is read here for one purpose only: to say why a bundled entry is
+    # absent from the file. It grants nothing at lint time - see lint_entries.
+    # An instinct or a user exclusion is not releasable at all: those are checked
+    # above by phrase, and a release naming one is refused below as unknown.
     deck = deck_lint_entries(cliches)
     known_ids = {e["id"] for e in deck}
     allowed = banlist.get("allowed", [])
@@ -220,24 +221,47 @@ def replay_contract(contract: dict[str, Any], banlist: dict[str, Any],
             f"the ban list is missing {len(missing_deck)} entries of the bundled cliche deck "
             f"({', '.join(missing_deck[:3])}...) - rebuild it with banlist.py rather than by hand"
         )
+    if allowed and warnings is not None:
+        warnings.append(
+            f"the ban list releases {len(allowed)} cliche id(s) ({', '.join(sorted(allowed)[:3])}); this gate "
+            "does not honour releases - a file cannot exempt itself from the verdict it is being judged by, "
+            "so those phrases are still linted here"
+        )
     return failures
 
 
 def lint_entries(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[str, Any]]:
-    """What the spec is linted against: the contract, plus the bundled deck.
+    """What the spec is linted against: the bundled deck, plus the contract.
 
-    The deck is re-added whatever contract was passed, so that the worst a
-    substituted or hand-trimmed file can do is fail the replay above - it can
-    never quietly shrink the lint to the phrases its author chose to include.
+    The deck goes in first and wins. Two rules follow, and each closes a hole
+    that was open in a version of this file.
+
+    A supplied entry carrying a bundled id is dropped, not merged. Dedup used to
+    be by id alone with the caller's copy processed first, so a contract could
+    carry `{"id": "hollow-seamless", "tier": "warn"}` and the deck's ban-tier
+    entry was never added - the deck was displaceable by the file under
+    judgement. A supplied entry that adds a *new* phrase is still added; adding
+    bans cannot weaken a verdict.
+
+    `allowed` is not read here at all. It is an assertion made by the artefact
+    being judged, and honouring it made naming a cliche id in the ban list
+    enough to release that cliche from the lint - the same bypass as a `--allow`
+    flag at verdict time, only cheaper. A release recorded by `banlist.py
+    --allow` still shortens the drafting lint (`cliche_lint.py`) and is still
+    accepted by the replay as a reason for the entry to be absent from the file;
+    it buys nothing at this gate. Releasing a bundled cliche at the gate means
+    changing the deck in the repository, where the change is reviewed outside
+    the session that wants it.
     """
-    allowed = {i for i in banlist.get("allowed", []) if isinstance(i, str)}
-    out: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for entry in list(banlist.get("entries", [])) + deck_lint_entries(cliches):
-        if not isinstance(entry, dict):
+    deck = deck_lint_entries(cliches)
+    reserved = {e["id"] for e in deck}
+    out: list[dict[str, Any]] = list(deck)
+    seen = {f"{e['id']}\x1f{normalize(str(e['phrase']))}" for e in deck}
+    for entry in banlist.get("entries", []):
+        if not isinstance(entry, dict) or entry.get("id") in reserved:
             continue
         key = f"{entry.get('id')}\x1f{normalize(str(entry.get('phrase', '')))}"
-        if key in seen or entry.get("id") in allowed:
+        if key in seen:
             continue
         seen.add(key)
         out.append(entry)
@@ -245,14 +269,16 @@ def lint_entries(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[
 
 
 def lint_patterns(banlist: dict[str, Any], cliches: dict[str, Any]) -> list[dict[str, Any]]:
-    """The structural patterns, likewise re-added from the deck."""
-    allowed = {i for i in banlist.get("allowed", []) if isinstance(i, str)}
-    out: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for pattern in list(banlist.get("structural_patterns", [])) + list(cliches["structural_patterns"]):
-        if not isinstance(pattern, dict) or pattern.get("id") in allowed:
-            continue
-        if pattern.get("id") in seen:
+    """The structural patterns, deck first and likewise not displaceable.
+
+    A supplied pattern bearing a bundled id used to replace it, so setting
+    `x-for-y` to the regex `$^` deleted a shipped structural ban.
+    """
+    deck = list(cliches["structural_patterns"])
+    seen = {str(p.get("id")) for p in deck}
+    out: list[dict[str, Any]] = list(deck)
+    for pattern in banlist.get("structural_patterns", []):
+        if not isinstance(pattern, dict) or str(pattern.get("id")) in seen:
             continue
         seen.add(str(pattern.get("id")))
         out.append(pattern)
@@ -504,6 +530,30 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
     # An absent field on either side used to skip these comparisons rather than
     # fail them, which made a stripped-down file safer to pass than an honest
     # one from another session.
+    # A contract built for a bakery launch validated a concept about a hospital
+    # ward, because nothing compared the two briefs. Containment of the shorter
+    # brief in the longer one, so that the sidecar restating and expanding the
+    # ask - which is what the field is for - still matches, while a contract
+    # from an unrelated session does not. This is a floor on subject matter, not
+    # proof of provenance: two sessions about the same subject still validate
+    # each other's contracts, and an author who writes both files can write two
+    # briefs that overlap. It raises the cost of a substituted contract from
+    # nothing to rewriting it.
+    banlist_brief = text_of(banlist.get("brief"))
+    if not banlist_brief:
+        failures.append(
+            "the ban list names no brief - a contract that does not say what it was built for cannot be "
+            "shown to belong to this session"
+        )
+    elif brief:
+        shared = max(coverage(banlist_brief, brief), coverage(brief, banlist_brief))
+        if shared < thresholds["min_brief_overlap"]:
+            failures.append(
+                f"the ban list was built for a different brief ({shared:.0%} of the shorter one reappears "
+                f"in the other): ban list '{banlist_brief[:60]}' vs concept '{brief[:60]}'. A contract "
+                "gates the session it was built in"
+            )
+
     contract_skeleton = text_of(contract.get("skeleton")) if isinstance(contract, dict) else ""
     banlist_skeleton = text_of(banlist.get("skeleton"))
     if not banlist_skeleton:
@@ -524,14 +574,35 @@ def check_concept(concept: dict[str, Any], schema: dict[str, Any], frames: dict[
             f"instincts in concept.json are absent from the ban list ({', '.join(missing)}...) - "
             "the two were built from different sessions"
         )
-    failures.extend(replay_contract(contract if isinstance(contract, dict) else {}, banlist, cliches))
+    failures.extend(replay_contract(contract if isinstance(contract, dict) else {}, banlist, cliches, warnings))
 
     # --- the user's own long exclusions ------------------------------------
     manual = [m for m in banlist.get("manual_checks", []) if isinstance(m, dict)]
     if manual:
+        # An answer is joined to a check by id, and the id is written by the same
+        # caller that writes both files. Two checks sharing one id were therefore
+        # discharged by one written answer, and the second exclusion the user
+        # asked for was never answered. The join is still by id - that is what
+        # the sidecar records - but a collision on either side is now a failure
+        # rather than a silent merge, so the cheap version of this costs a
+        # rejected contract.
+        ids = [text_of(m.get("id")) for m in manual]
+        repeated = sorted({i for i in ids if ids.count(i) > 1})
+        if repeated:
+            failures.append(
+                f"the ban list reuses manual check id(s) ({', '.join(repeated)}) - answers are joined to "
+                "checks by id, so two exclusions sharing one id would be discharged by one written answer"
+            )
         cleared = contract.get("manual_checks_cleared") if isinstance(contract, dict) else None
         cleared_map: dict[str, str] = {}
         if isinstance(cleared, list):
+            cleared_ids = [text_of(e.get("id")) for e in cleared if isinstance(e, dict) and text_of(e.get("id"))]
+            repeated_cleared = sorted({i for i in cleared_ids if cleared_ids.count(i) > 1})
+            if repeated_cleared:
+                failures.append(
+                    f"banlist_contract.manual_checks_cleared reuses id(s) ({', '.join(repeated_cleared)}) - "
+                    "each exclusion is answered once, in its own note"
+                )
             for entry in cleared:
                 if isinstance(entry, dict) and text_of(entry.get("id")):
                     cleared_map[text_of(entry.get("id"))] = text_of(entry.get("note"))

@@ -116,3 +116,143 @@ def test_releases_are_limited_to_the_deck(run, tmp_path, references, banlist):
     res = gate_with(run, references, trimmed)
     assert res.code == 2, res
     assert any("not in the cliche deck" in f for f in res.json()["failures"])
+
+
+# --- the file being judged cannot grant itself an exemption ----------------
+
+
+def test_the_contract_cannot_release_a_deck_ban_from_the_lint(
+    run, tmp_path, references, banlist, spec_with_cliches
+):
+    """`allowed` was read from the file under test, so naming two cliche ids in
+    it released those cliches from the verdict. This made the gate strictly
+    weaker than the version before the replay was added, on exactly the phrases
+    the replay exists to keep out."""
+    released = rewrite(banlist, tmp_path, allowed=["hollow-seamless", "hollow-frictionless"])
+    res = gate_with(run, references, released, spec_with_cliches)
+    assert res.code == 2, res
+    failures = " ".join(res.json()["failures"])
+    assert "banned phrase" in failures
+    assert "seamless" in failures and "frictionless" in failures
+    warnings = " ".join(res.json()["warnings"])
+    assert "does not honour releases" in warnings, "a release must be reported, not silently dropped"
+
+
+def test_a_release_is_still_a_reason_for_an_entry_to_be_absent(
+    run, tmp_path, references, banlist
+):
+    """The other half of the same rule: `banlist.py --allow` writes a file with
+    the entry removed, and the replay must accept that rather than report the
+    deck as incomplete. The phrase is still linted; only the completeness check
+    is relaxed, and only by the file's own account of itself."""
+    payload = json.loads(banlist.read_text(encoding="utf-8"))
+    released = rewrite(
+        banlist, tmp_path,
+        allowed=["gamification"],
+        entries=[e for e in payload["entries"] if e.get("id") != "gamification"],
+    )
+    res = gate_with(run, references, released)
+    failures = " ".join(res.json()["failures"])
+    assert "bundled cliche deck" not in failures, failures
+
+
+def test_a_supplied_entry_cannot_displace_the_bundled_one_by_id(
+    run, tmp_path, references, banlist, spec_with_cliches
+):
+    """Dedup was by id with the caller's copy first, so a contract carrying
+    `hollow-seamless` at tier `warn` deleted the deck's ban-tier entry."""
+    payload = json.loads(banlist.read_text(encoding="utf-8"))
+    for entry in payload["entries"]:
+        if entry.get("id") in ("hollow-seamless", "hollow-frictionless"):
+            entry["tier"] = "warn"
+    demoted = rewrite(banlist, tmp_path, entries=payload["entries"])
+    res = gate_with(run, references, demoted, spec_with_cliches)
+    assert res.code == 2, res
+    failures = " ".join(res.json()["failures"])
+    assert "seamless" in failures and "frictionless" in failures
+
+
+def test_a_supplied_pattern_cannot_displace_the_bundled_one_by_id(
+    run, tmp_path, references, banlist
+):
+    """Same shape, structural patterns: setting `cross-between` to a regex that
+    never matches used to delete a shipped structural ban. That pattern rather
+    than `x-for-y` because no phrase entry duplicates it, so the pattern is the
+    only thing standing between this sentence and a pass."""
+    spec = (references / "example-concept.md").read_text(encoding="utf-8")
+    marker = "<!-- section: concept -->"
+    spec = spec.replace(marker, marker + "\n\nIt is a cross between a checklist and a conversation.\n", 1)
+    path = tmp_path / "spec-cross-between.md"
+    path.write_text(spec, encoding="utf-8")
+
+    payload = json.loads(banlist.read_text(encoding="utf-8"))
+    control = gate_with(run, references, banlist, str(path))
+    assert control.code == 2, "the control must fail, or the fixture proves nothing"
+
+    for pattern in payload["structural_patterns"]:
+        if pattern.get("id") == "cross-between":
+            pattern["regex"] = "$^"
+    neutered = rewrite(banlist, tmp_path, structural_patterns=payload["structural_patterns"])
+    res = gate_with(run, references, neutered, str(path))
+    assert res.code == 2, res
+    assert "banned phrase" in " ".join(res.json()["failures"])
+
+
+# --- one written answer discharges one exclusion ---------------------------
+
+
+def test_two_manual_checks_sharing_an_id_are_refused(run, tmp_path, references, banlist):
+    """Replay verifies the checks by statement, but enforcement joins answers to
+    checks by an id neither file has to keep unique, so one note discharged
+    both of the user's long exclusions."""
+    payload = json.loads(banlist.read_text(encoding="utf-8"))
+    assert len(payload["manual_checks"]) >= 2, "the fixture needs two long exclusions"
+    for check in payload["manual_checks"]:
+        check["id"] = "user-01"
+    duplicated = rewrite(banlist, tmp_path, manual_checks=payload["manual_checks"])
+    res = gate_with(run, references, duplicated)
+    assert res.code == 2, res
+    assert any("reuses manual check id" in f for f in res.json()["failures"])
+
+
+def test_two_answers_sharing_an_id_are_refused(run, tmp_path, references, banlist, example):
+    """The mirror image: two notes under one id leave the other check unanswered
+    while the map looks full."""
+    from copy import deepcopy
+
+    concept = deepcopy(example)
+    cleared = concept["banlist_contract"]["manual_checks_cleared"]
+    assert len(cleared) >= 2
+    first = cleared[0]["id"]
+    for entry in cleared:
+        entry["id"] = first
+    path = tmp_path / "concept-dup-answers.json"
+    path.write_text(json.dumps(concept, ensure_ascii=False), encoding="utf-8")
+    res = run("spec_gate.py", "--concept", str(path),
+              "--markdown", str(references / "example-concept.md"),
+              "--banlist", str(banlist), "--json")
+    assert res.code == 2, res
+    assert any("manual_checks_cleared reuses id" in f for f in res.json()["failures"])
+
+
+# --- the contract must belong to the session it is gating ------------------
+
+
+def test_a_contract_built_for_another_brief_is_refused(run, tmp_path, references, instincts_file,
+                                                       user_file, skeleton):
+    """Nothing compared the two briefs, so a contract built for a bakery launch
+    validated a concept about a hospital ward."""
+    res = run("banlist.py", "--brief", "a launch campaign for a bakery",
+              "--instincts", str(instincts_file), "--user", str(user_file),
+              "--skeleton", skeleton, "--confirmed", "--out", str(tmp_path / "bakery"))
+    assert res.code == 0, res
+    gate = gate_with(run, references, tmp_path / "bakery" / "banlist.json")
+    assert gate.code == 2, gate
+    assert any("built for a different brief" in f for f in gate.json()["failures"])
+
+
+def test_a_contract_with_no_brief_is_refused(run, tmp_path, references, banlist):
+    trimmed = rewrite(banlist, tmp_path, brief="")
+    res = gate_with(run, references, trimmed)
+    assert res.code == 2, res
+    assert any("names no brief" in f for f in res.json()["failures"])

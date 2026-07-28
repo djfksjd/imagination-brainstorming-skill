@@ -240,9 +240,15 @@ All three arguments are required, and they must belong to the same session. The
 gate rebuilds the contract from what `concept.json` declares - the same
 classification `banlist.py` applied - and every resulting ban, every one of the
 user's long exclusions and every entry of the bundled cliché deck must be
-present in the file you pass. A contract written by hand, trimmed, or carried
+present in the file you pass. The ban list must also name the same brief as
+`concept.json` - a contract built for a bakery launch used to validate a
+concept about a hospital ward. A contract written by hand, trimmed, or carried
 over from another session fails, and the deck is linted against whatever
-arrives, so a shorter file cannot mean a shorter lint. It also checks that the written spec
+arrives, so a shorter file cannot mean a shorter lint. The brief comparison is
+a floor on subject matter, not proof of provenance: two sessions on the same
+subject still validate each other's contracts, and whoever writes both files
+can write two briefs that overlap. It raises the cost of substituting a
+contract from nothing to rewriting it. It also checks that the written spec
 actually asserts the concept. The refusal, what becomes impossible, the
 first-use scene and every open question are marked with
 `<!-- bind: <field> -->` ... `<!-- /bind -->` and compared to the sidecar
@@ -250,10 +256,25 @@ exactly - each exactly once, inside its own section, as plain prose. A
 similarity score was tried first and could not separate a proposition being
 asserted from the same words quoted inside a sentence that rejects them.
 
-There is no `--allow` on this gate or on `divergence_check.py`. An exception
-granted at verdict time is granted by the party the verdict is about; a real
-one is made once while the contract is being built, recorded there with a
-reason, shown to the user before they confirm it, and inherited from then on.
+There is no `--allow` on this gate or on `divergence_check.py`, and the gate
+does not honour the `allowed` field of the ban list either. An exception
+granted at verdict time is granted by the party the verdict is about, and a
+ban list that can exempt itself is a flag with extra steps: naming two cliché
+ids in `allowed` once released both from the verdict. A release made with
+`banlist.py --allow` still shortens the drafting lint (`cliche_lint.py`), and
+the gate still accepts it as the reason an entry is absent from the file - it
+just does not stop that phrase being linted. Releasing a bundled cliché at the
+gate means changing `references/decks/cliches.json`, where the change is
+reviewed outside the session that wants it. Bundled entries and structural
+patterns also win on id: a supplied rule carrying a bundled id is dropped
+rather than merged, so the deck cannot be demoted or neutered by the file
+under judgement.
+
+Two of the user's long exclusions may not share an id, and neither may two of
+the answers to them, because the gate joins answer to exclusion by that id and
+one written note used to discharge two checks. The id is still written by the
+same caller that writes both files; making a collision a failure costs a
+rejected contract rather than closing the join.
 
 Then read it once yourself with fresh eyes: placeholders, contradictions between
 sections, requirements that could be read two ways, scope that should have been
