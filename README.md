@@ -118,7 +118,7 @@ Answer both halves. Naming the one you were already picturing costs nothing and 
 
 **3 · The unsafe seat.** One of the three approaches is deliberately the one you are expected to reject, argued in the same detail as the others. Reject it if it is wrong — but say *why*, in one sentence. That sentence usually relocates the concept more than picking the winner does.
 
-**4 · The review gate.** The spec is written to a file and handed back with *"please read it and tell me what to change."* This is not a formality. The gates check that the work was done, not that the concept is right — see below.
+**4 · The review gate.** The spec is written to a file and handed back with *"please read it and tell me what to change."* This is not a formality. The gates check that the required work is present, not that the concept is right — see below.
 
 ### The three things to say
 
@@ -165,11 +165,13 @@ python3 scripts/spec_gate.py --concept references/example-concept.json \
 
 Every file named there ships in the repo, so the block runs as written and all four steps exit `0`; step 2 reproduces `references/example-banlist.json` exactly. Swap in your own session's files as you go.
 
-**`approaches.json` is written by hand.** `deal.py` deals the frames; you write one approach per dealt frame into an object with an `approaches` key — an `id`, a `frame_id` from the frames deck, a `summary` of at least 120 units, a `failure_mode` of at least 60 that says how *this* one fails in *this* brief, and `unsafe_seat` set true on exactly one of them. `references/decks/approaches-schema.json` documents every field and every floor the check applies; `references/example-approaches.json` is a passing file to copy the shape from.
+**`approaches.json` is written by hand.** `deal.py` deals the frames; you write one approach per dealt frame into an object with an `approaches` key — an `id`, a `frame_id` from the frames deck, a `summary` of at least 96 units, a `failure_mode` of at least 48 that says how *this* one fails in *this* brief, a `frame_fit` of at least 40 saying what in this brief plays the part the frame requires, and `unsafe_seat` set true on exactly one of them. `references/decks/approaches-schema.json` documents every field and every floor the check applies; `references/example-approaches.json` is a passing file to copy the shape from.
+
+`frame_fit` is where a frame the brief cannot hold becomes visible. `designed-for-repair` — *assume it breaks often; include the repair procedure and the spare parts* — was once dealt into the unsafe seat for a one-off closing rite that happens once and has no maker, and the set passed. If nothing in the brief can play the part the frame names, say so and redeal with `--run 2` rather than arguing it. The check requires the claim; it cannot check that the claim is true.
 
 `--confirmed` records consent that has already happened. Setting it before the user has seen the list is a lie the rest of the pipeline then relies on, and the gate has no way to detect it — which is why it is a two-step call rather than one flag.
 
-The contract itself cannot be swapped, though. The gate rebuilds it from what `concept.json` declares and refuses any file missing one of the burned instincts, one of the user's own exclusions, or an entry of the bundled cliché deck — and that deck is linted against the spec whatever contract arrives, so handing the gate a shorter file can never mean a shorter lint.
+Swapping the contract is not free, though it is not impossible either — nothing here establishes provenance. The gate rebuilds the contract from what `concept.json` declares and refuses any file missing one of the burned instincts, one of the user's own exclusions, or an entry of the bundled cliché deck; the two files must record the same skeleton and the same brief, string for string; and the ban list's brief has to name a subject rather than a word. That deck is linted against the spec whatever contract arrives, so handing the gate a shorter file can never mean a shorter lint. What all of that establishes is consistency between two files the same author writes — a substituted contract has to be rewritten, not renamed.
 
 `cliche_lint.py` is for **drafts mid-session**. Run it on a finished spec and it will flag the spec's own ban-list section; `spec_gate.py` is the one that lints a finished spec, and it excises that section first.
 
@@ -185,17 +187,30 @@ The contract itself cannot be swapped, though. The gate rebuilds it from what `c
 ### What the gates cannot check
 
 > [!IMPORTANT]
-> They are floors. They prove the work was **done** — not that it was **right**. Three things pass every gate in this repo:
+> They are floors. They check that the required work is **present** — not that it was **right**. Three things pass every gate in this repo:
 >
 > - **a justification that inverts its own evidence** — an argument whose premise, read carefully, supports the opposite conclusion;
 > - **a mechanism attackable on its own terms** — for example a number that changes depending on the order it was computed in, presented as the concept's proof of transparency;
 > - **three approaches that are genuinely one idea** in three vocabularies. The check catches restatement and shared failure modes; it cannot read.
+>
+> Two more the gate now insists on, without claiming to judge either: the chosen approach's own stated failure mode has to be **answered** in `chosen.answers_failure_mode` — a concept that declared its own collapse and moved on used to pass first try — and each approach has to say what in the brief occupies its frame. In both cases the gate checks that something was written and prints it for you; it cannot tell you whether the answer is any good.
 >
 > A fourth used to pass and no longer does: the same words quoted inside a sentence that rejects them. The refusal, what becomes impossible, the first-use scene and every open question are now marked with `<!-- bind: … -->` and compared to the sidecar **exactly** — once each, inside their own section, as plain prose. The similarity score they replaced could not tell *"we forbid X"* from *"we considered forbidding X but allow it"*. And neither this gate nor the divergence check takes `--allow` any more: an exception granted at verdict time is granted by the party the verdict is about.
 >
 > All three occurred during this skill's own trial run and all three were caught by a person, not a script. So: before the spec reaches you, have a second reader attack it — another model, a colleague — and ask them to argue that **it loses**, not that it could be improved. "How would you make this better" gets you polish. "Why does this lose" gets you the inverted premise.
 >
 > The skill also runs a **direction-of-evidence audit** on itself: for every load-bearing *because*, it has to write down the opposite conclusion the same premise would support, and name what the deciding party can actually observe. That is the check that catches *"the judge is a machine, therefore our internal record is the differentiator"* — a machine judge cannot observe the internal record, so the premise argues for the opposite.
+
+### Briefs that are not products
+
+The process, the question families, the frames and the spec contract apply to any subject — a story world, a game mechanic, a ritual, a campaign, a format. Two parts of the machinery are narrower than that, and it is better to know which:
+
+- **The cliché phrase list is pitch-and-product vocabulary** — one-stop shop, KPI dashboard, Uber for X, gamification. On a story or ritual brief almost none of it will ever fire, which means the machine-checkable half of the contract is doing little and the session's own instincts and skeleton are carrying the weight. The hollow adjectives and the forbidden moves still apply everywhere.
+- **A banned adjective can be ordinary vocabulary.** In fiction *magical* and *delightful* denote rather than claim, and *"the region is not magical"* was once refused for saying so. Mark that span in place — `<!-- mention: hollow-magical -->the region is not magical<!-- /mention -->` — and the release covers that span and that rule only. It cannot verify that the word is mentioned rather than used; it makes the claim explicit and reviewable instead of leaving a blanket release as the only escape.
+
+Two things to expect rather than discover: more of your first instincts will be clauses than noun phrases, so more of them land in the manual checks — those are a reread, not notes you have to write, and only *your own* exclusions require a written answer — and a dealt frame is more likely to be one the brief cannot hold, which is what `frame_fit` and a redeal are for.
+
+`references/example-ritual-concept.md` is a complete worked example of exactly this shape: a closing rite for a bakery that has traded on one street for ninety years, shipped with its contract, its approaches and its sidecar, gated by the same two commands.
 
 ## What it will not do
 
@@ -204,7 +219,7 @@ The contract itself cannot be swapped, though. The gate rebuilds it from what `c
 > - **Claim nobody has thought of this.** Unverifiable, so it is forbidden. The spec names the nearest existing things and states the difference instead.
 > - **Manufacture strangeness.** When the conventional answer is the correct answer, the skill is required to say so in one sentence and do the ordinary work.
 > - **Shrink your request to make it easier to spec.** Scope gets decomposed openly, never quietly narrowed.
-> - **Pretend a passing gate means a good idea.** It proves the work was done, not that the concept is right. The skill says so in its own output.
+> - **Pretend a passing gate means a good idea.** It checks that the required assertions and artefacts are present, not that the concept is right. The skill says so in its own output.
 
 ## Under the hood
 
@@ -228,6 +243,7 @@ skills/imagination-brainstorming/
 │   ├── example-concept.json    # its sidecar — both pass the gates, both are test fixtures
 │   ├── example-approaches.json # stage 3 input, in the shape divergence_check.py reads
 │   ├── example-banlist.json    # the contract all of the above were gated against
+│   ├── example-ritual-*.{md,json,txt}  # a second worked example that is not a product
 │   ├── example-instincts.txt   # the twelve instincts it was built from
 │   ├── example-exclusions.txt  # and the user's own three
 │   └── decks/                  # question families · frames · clichés · spec schema · approaches schema

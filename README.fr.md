@@ -165,11 +165,13 @@ python3 scripts/spec_gate.py --concept references/example-concept.json \
 
 Tous les fichiers cités là sont livrés avec le dépôt : le bloc s'exécute tel quel et les quatre étapes se terminent par `0` ; l'étape 2 reproduit `references/example-banlist.json` à l'identique. Remplacez-les au fur et à mesure par ceux de votre propre séance.
 
-**`approaches.json` s'écrit à la main.** `deal.py` distribue les cadres ; vous écrivez une approche par cadre distribué dans un objet muni d'une clé `approaches` — un `id`, un `frame_id` pris dans le jeu de cadres, un `summary` d'au moins 120 unités, un `failure_mode` d'au moins 60 disant comment *celle-ci* échoue dans *ce* brief, et `unsafe_seat` à vrai sur exactement une d'entre elles. `references/decks/approaches-schema.json` documente chaque champ et chaque plancher appliqué par la vérification ; `references/example-approaches.json` est un fichier qui passe, dont vous pouvez copier la forme.
+**`approaches.json` s'écrit à la main.** `deal.py` distribue les cadres ; vous écrivez une approche par cadre distribué dans un objet muni d'une clé `approaches` — un `id`, un `frame_id` pris dans le jeu de cadres, un `summary` d'au moins 96 unités, un `failure_mode` d'au moins 48 qui dit comment *celle-ci* échoue dans *ce* brief, un `frame_fit` d'au moins 40 qui dit ce qui, dans ce brief, occupe la place exigée par le cadre, et `unsafe_seat` à true sur exactement une d'entre elles. `references/decks/approaches-schema.json` documente chaque champ et chaque plancher appliqué par le contrôle ; `references/example-approaches.json` est un fichier qui passe et dont on peut copier la forme.
+
+`frame_fit` est l'endroit où un cadre que le brief ne peut pas tenir devient visible. `designed-for-repair` — *supposez que cela casse souvent ; incluez la procédure de réparation et les pièces de rechange* — s'est retrouvé une fois au siège inconfortable pour un rite de fermeture qui n'a lieu qu'une seule fois, sans fabricant ni pièces de rechange, et l'ensemble est passé quand même. Si rien dans le brief ne peut occuper la place que le cadre nomme, dites-le et redistribuez avec `--run 2` plutôt que de l'argumenter. Le contrôle exige l'affirmation ; il ne peut pas vérifier qu'elle est vraie.
 
 `--confirmed` enregistre un consentement qui a déjà eu lieu. Le poser avant que l'utilisateur ait vu la liste est un mensonge dont dépend tout le reste de la chaîne, et la barrière n'a aucun moyen de le détecter — d'où deux appels plutôt qu'un drapeau.
 
-Le contrat, lui, ne peut pas être substitué. La barrière le reconstruit à partir de ce que déclare `concept.json` et refuse tout fichier auquel manque l'un des instincts brûlés, l'une des exclusions de l'utilisateur ou une entrée du jeu de clichés fourni — et ce jeu est appliqué à la spécification quel que soit le contrat reçu, de sorte qu'un fichier plus court ne donnera jamais un lint plus court.
+Substituer le contrat n'est pas gratuit — ce n'est pas impossible non plus : rien ici n'établit une provenance. La barrière le reconstruit à partir de ce que déclare `concept.json` et refuse tout fichier auquel manque l'un des réflexes brûlés, l'une des exclusions de l'utilisateur ou une entrée du jeu de clichés fourni ; les deux fichiers doivent porter le même squelette et le même brief, caractère pour caractère, et le brief de la liste d'interdits doit nommer un sujet, pas un mot. Ce jeu est appliqué à la spécification quel que soit le contrat qui arrive : remettre un fichier plus court ne donnera jamais un lint plus court. Ce que tout cela établit, c'est la cohérence entre deux fichiers écrits par la même main — substituer un contrat suppose de le réécrire, pas de le renommer.
 
 `cliche_lint.py` sert aux **brouillons en cours de séance**. Lancé sur une spécification terminée, il signalera la propre section d'interdits du document ; celui qui relit une spécification terminée, c'est `spec_gate.py`, qui excise d'abord ce passage.
 
@@ -185,17 +187,30 @@ Le contrat, lui, ne peut pas être substitué. La barrière le reconstruit à pa
 ### Ce que les barrières ne peuvent pas vérifier
 
 > [!IMPORTANT]
-> Ce sont des planchers. Elles prouvent que le travail a **été fait**, pas qu'il était **juste**. Trois choses passent toutes les barrières de ce dépôt :
+> Ce sont des planchers. Ils vérifient que le travail exigé **est là**, pas qu'il était **juste**. Trois choses passent toutes les barrières de ce dépôt :
 >
 > - **une justification qui retourne sa propre preuve** — un argument dont la prémisse, lue attentivement, soutient la conclusion inverse ;
 > - **un mécanisme attaquable selon ses propres termes** — par exemple un nombre qui change selon l'ordre de calcul, présenté comme la preuve de transparence du concept ;
 > - **trois approches qui n'en font qu'une** en trois vocabulaires. Le contrôle attrape la reformulation et les causes de mort communes ; il ne sait pas lire.
+>
+> La barrière en exige désormais deux de plus, sans prétendre juger ni l'une ni l'autre : le mode d'échec que l'approche retenue a elle-même écrit doit être **traité** dans `chosen.answers_failure_mode` — un concept qui déclarait son propre effondrement et passait outre franchissait la barrière du premier coup — et chaque approche doit dire ce qui, dans le brief, occupe son cadre. Dans les deux cas, la barrière vérifie que quelque chose a été écrit et vous le met sous les yeux ; elle ne peut pas vous dire si la réponse tient.
 >
 > Une quatrième passait et ne passe plus : les mêmes mots cités à l'intérieur d'une phrase qui les rejette. L'interdit, ce qui devient impossible, la scène de première utilisation et chaque question ouverte sont désormais marqués par `<!-- bind: … -->` et comparés au sidecar **à l'identique** — une fois chacun, dans leur propre section, en prose simple. Le score de similarité qu'ils remplacent ne distinguait pas *« nous interdisons X »* de *« nous avons envisagé d'interdire X mais l'autorisons »*. Et ni cette barrière ni le contrôle de divergence n'acceptent plus `--allow` : une exception accordée au moment du verdict est accordée par la partie que ce verdict concerne.
 >
 > Les trois se sont produites pendant la séance d'essai de cette compétence, et les trois ont été attrapées par une personne, pas par un script. Donc : avant que la spécification ne vous parvienne, faites-la attaquer par un second lecteur — un autre modèle, un collègue — en lui demandant d'argumenter qu'**elle perd**, pas qu'elle pourrait être améliorée. « Comment l'améliorer » vous rapporte du polissage. « Pourquoi perd-elle » vous rapporte la prémisse inversée.
 >
 > La compétence s'applique aussi à elle-même un **audit du sens de la preuve** : pour chaque *parce que* porteur, elle doit écrire la conclusion opposée que la même prémisse soutiendrait, et nommer ce que la partie décisionnaire peut réellement observer. C'est l'étape qui attrape *« le jury est une machine, donc notre registre interne est le différenciateur »* — une machine ne peut pas observer le registre interne, donc cette prémisse plaide pour l'inverse.
+
+### Des briefs qui ne sont pas des produits
+
+Le processus, les familles de questions, les cadres et le contrat de spécification valent pour n'importe quel sujet — un monde narratif, une mécanique de jeu, un rite, une campagne, un format. Deux pièces de la mécanique sont plus étroites que cela, et mieux vaut savoir lesquelles :
+
+- **La liste de clichés est du vocabulaire de pitch et de produit** — one-stop shop, tableau de bord de KPI, l'Uber de X, gamification. Sur un brief narratif ou rituel, presque aucune ne se déclenchera. Autrement dit, la moitié vérifiable par machine du contrat ne fait pas grand-chose, et ce sont les réflexes et le squelette de la séance elle-même qui portent le poids. Les adjectifs creux et les gestes interdits, eux, valent partout.
+- **Un adjectif interdit peut être du vocabulaire ordinaire.** En fiction, *magical* et *delightful* désignent au lieu d'affirmer, et *« la région n'est pas magical »* a été refusée pour l'avoir écrit. Marquez ce passage sur place — `<!-- mention: hollow-magical -->la région n'est pas magical<!-- /mention -->` — la levée ne couvre que ce passage et cette règle. Elle ne peut pas vérifier que le mot est mentionné plutôt qu'employé ; elle rend l'affirmation explicite et relisible au lieu de laisser la levée en bloc comme seule issue.
+
+Deux choses à prévoir plutôt qu'à découvrir : vos premiers réflexes seront plus souvent des propositions que des syntagmes nominaux, donc davantage d'entre eux atterriront dans les vérifications manuelles — ce sont des relectures, pas des notes à rédiger, et seules *vos propres* exclusions appellent une réponse écrite — et il est plus probable qu'un cadre distribué soit un cadre que le brief ne peut pas tenir, ce à quoi servent `frame_fit` et une redistribution.
+
+`references/example-ritual-concept.md` est un exemple complet exactement de cette forme : le rite de fermeture d'une boulangerie qui tient la même rue depuis quatre-vingt-dix ans, livré avec son contrat, ses approches et son sidecar, contrôlé par les deux mêmes commandes.
 
 ## Ce qu'elle ne fera pas
 
@@ -204,7 +219,7 @@ Le contrat, lui, ne peut pas être substitué. La barrière le reconstruit à pa
 > - **Prétendre que personne n'y a jamais pensé.** Invérifiable, donc interdit. Elle nomme les choses existantes les plus proches et énonce la différence.
 > - **Fabriquer de l'étrangeté.** Quand la réponse conventionnelle est la bonne, la compétence doit le dire en une phrase, sortir d'elle-même et faire le travail normal en dehors.
 > - **Rétrécir votre demande pour la rendre plus facile à spécifier.** Le périmètre est décomposé ouvertement, jamais rétréci en silence.
-> - **Faire croire qu'un contrôle réussi signifie une bonne idée.** Il prouve que le travail a été fait, pas que le concept est juste. La compétence le dit dans sa propre sortie.
+> - **Faire croire qu'un contrôle réussi signifie une bonne idée.** Il vérifie que les affirmations et les artefacts exigés sont présents, pas que le concept est juste. La compétence le dit dans sa propre sortie.
 
 ## Sous le capot
 
@@ -228,6 +243,7 @@ skills/imagination-brainstorming/
 │   ├── example-concept.json    # son sidecar — les deux passent les contrôles et servent de fixtures
 │   ├── example-approaches.json # entrée de l'étape 3, dans la forme que lit divergence_check.py
 │   ├── example-banlist.json    # le contrat qui a servi à contrôler tout ce qui précède
+│   ├── example-ritual-*.{md,json,txt}  # un second exemple complet qui n'est ni un produit ni un service
 │   ├── example-instincts.txt   # les douze instincts dont il est issu
 │   ├── example-exclusions.txt  # et les trois exclusions de l'utilisateur
 │   └── decks/                  # familles de questions · cadres · clichés · schéma de spec · schéma d'approches

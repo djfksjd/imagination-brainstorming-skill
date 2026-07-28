@@ -165,11 +165,13 @@ python3 scripts/spec_gate.py --concept references/example-concept.json \
 
 Todos os arquivos citados aí acompanham o repositório, então o bloco roda como está e os quatro passos terminam em `0`; o passo 2 reproduz `references/example-banlist.json` exatamente. Vá trocando pelos arquivos da sua própria sessão conforme avança.
 
-**`approaches.json` é escrito à mão.** O `deal.py` distribui os enquadramentos; você escreve uma abordagem por enquadramento distribuído dentro de um objeto com a chave `approaches` — um `id`, um `frame_id` tirado do baralho de enquadramentos, um `summary` de pelo menos 120 unidades, um `failure_mode` de pelo menos 60 dizendo como *esta* abordagem quebra *neste* briefing, e `unsafe_seat` verdadeiro em exatamente uma delas. O `references/decks/approaches-schema.json` documenta cada campo e cada piso que a checagem aplica; o `references/example-approaches.json` é um arquivo aprovado do qual copiar o formato.
+**`approaches.json` é escrito à mão.** O `deal.py` distribui os enquadramentos; você escreve uma abordagem por enquadramento distribuído dentro de um objeto com a chave `approaches` — um `id`, um `frame_id` do baralho de enquadramentos, um `summary` de pelo menos 96 unidades, um `failure_mode` de pelo menos 48 dizendo como *esta* abordagem falha *neste* briefing, um `frame_fit` de pelo menos 40 dizendo o que neste briefing ocupa o lugar que o enquadramento exige, e `unsafe_seat` verdadeiro em exatamente uma delas. O `references/decks/approaches-schema.json` documenta cada campo e cada piso que a checagem aplica; `references/example-approaches.json` é um arquivo que passa e de onde copiar o formato.
+
+O `frame_fit` é onde um enquadramento que o briefing não sustenta fica visível. O `designed-for-repair` — *suponha que quebra com frequência; inclua o procedimento de reparo e as peças de reposição* — já caiu na cadeira desconfortável de um rito de encerramento que acontece uma única vez, sem fabricante e sem peças, e o conjunto passou assim mesmo. Se nada no briefing puder ocupar o lugar que o enquadramento nomeia, diga isso e redistribua com `--run 2` em vez de defendê-lo. A checagem exige a afirmação; não consegue verificar se ela é verdadeira.
 
 `--confirmed` registra um consentimento que já aconteceu. Ligá-lo antes de o usuário ter visto a lista é uma mentira da qual todo o resto do pipeline passa a depender, e o portão não tem como detectá-la — por isso são duas chamadas, e não um único sinalizador.
 
-O contrato, esse não dá para trocar. O portão o reconstrói a partir do que o `concept.json` declara e recusa qualquer arquivo a que falte um dos instintos queimados, uma das exclusões do próprio usuário ou uma entrada do baralho de clichês embutido — e esse baralho é aplicado à especificação venha o contrato que vier, de modo que entregar um arquivo mais curto nunca significa um lint mais curto.
+Trocar o contrato não sai de graça — mas também não é impossível: nada aqui estabelece procedência. O portão o reconstrói a partir do que o `concept.json` declara e recusa qualquer arquivo a que falte um dos instintos queimados, uma das exclusões do próprio usuário ou uma entrada do baralho de clichês embutido; os dois arquivos precisam registrar o mesmo esqueleto e o mesmo briefing, caractere por caractere, e o briefing da lista de banimentos precisa nomear um assunto, não uma palavra. Esse baralho é aplicado à especificação venha o contrato que vier, então entregar um arquivo mais curto nunca significa um lint mais curto. O que tudo isso estabelece é a coerência entre dois arquivos escritos pela mesma mão: substituir um contrato exige reescrevê-lo, não rebatizá-lo.
 
 `cliche_lint.py` é para **rascunhos no meio da sessão**. Rodado sobre uma especificação pronta, ele aponta a própria seção de proibições do documento; quem revisa a especificação pronta é o `spec_gate.py`, que recorta esse trecho antes.
 
@@ -185,17 +187,30 @@ O contrato, esse não dá para trocar. O portão o reconstrói a partir do que o
 ### O que os portões não conseguem verificar
 
 > [!IMPORTANT]
-> Eles são pisos. Provam que o trabalho foi **feito**, não que estava **certo**. Três coisas passam por todos os portões deste repositório:
+> Eles são pisos. Verificam que o trabalho exigido **está ali**, não que estava **certo**. Três coisas passam por todos os portões deste repositório:
 >
 > - **uma justificativa que inverte a própria evidência** — um argumento cuja premissa, lida com cuidado, sustenta a conclusão oposta;
 > - **um mecanismo atacável nos próprios termos** — por exemplo, um número que muda conforme a ordem em que foi calculado, apresentado como a prova de transparência do conceito;
 > - **três abordagens que na verdade são uma ideia** em três vocabulários. A checagem pega reformulação e causas de morte compartilhadas; ela não sabe ler.
+>
+> Agora o portão exige mais duas, sem pretender julgar nenhuma delas: o modo de falha que a própria abordagem escolhida deixou escrito precisa ser **respondido** em `chosen.answers_failure_mode` — um conceito que declarava o próprio colapso e seguia em frente passava de primeira — e cada abordagem precisa dizer o que, no briefing, ocupa o seu enquadramento. Nos dois casos o portão confere que algo foi escrito e põe isso na sua frente; ele não sabe dizer se a resposta presta.
 >
 > Uma quarta passava e não passa mais: as mesmas palavras citadas dentro de uma frase que as rejeita. A proibição, o que se torna impossível, a cena de primeiro uso e cada pergunta em aberto agora são marcadas com `<!-- bind: … -->` e comparadas ao sidecar **exatamente** — uma vez cada, dentro da própria seção, como prosa simples. O escore de similaridade que substituíram não distinguia *"proibimos X"* de *"consideramos proibir X mas permitimos"*. E nem este portão nem a checagem de divergência aceitam mais `--allow`: uma exceção concedida na hora do veredicto é concedida pela parte de que o veredicto trata.
 >
 > As três aconteceram durante a própria sessão de teste desta habilidade e as três foram pegas por uma pessoa, não por um script. Então: antes que a especificação chegue até você, peça a um segundo leitor que a ataque — outro modelo, um colega — e que argumente que **ela perde**, não que poderia melhorar. "Como deixar isso melhor" traz polimento. "Por que isso perde" traz a premissa invertida.
 >
 > A habilidade também roda em si mesma uma **auditoria da direção da evidência**: para cada *porque* que sustenta algo, ela precisa escrever a conclusão oposta que a mesma premissa sustentaria, e nomear o que a parte que decide consegue de fato observar. É esse passo que pega *"o avaliador é uma máquina, portanto nosso registro interno é o diferencial"* — uma máquina não consegue observar o registro interno, então essa premissa argumenta pelo contrário.
+
+### Briefings que não são produtos
+
+O processo, as famílias de perguntas, os enquadramentos e o contrato da especificação valem para qualquer assunto — um mundo narrativo, uma mecânica de jogo, um rito, uma campanha, um formato. Duas peças da maquinaria são mais estreitas do que isso, e é melhor saber quais:
+
+- **A lista de frases clichê é vocabulário de pitch e de produto** — one-stop shop, painel de KPIs, o Uber de X, gamificação. Num briefing narrativo ou ritual, quase nenhuma delas chegará a disparar. Ou seja: a metade do contrato que a máquina consegue checar faz pouco, e quem carrega o peso são os instintos e o esqueleto da própria sessão. Os adjetivos ocos e os movimentos proibidos continuam valendo em todo lugar.
+- **Um adjetivo banido pode ser vocabulário comum.** Na ficção, *magical* e *delightful* designam em vez de afirmar, e *"a região não é magical"* chegou a ser recusada por dizer isso. Marque o trecho no lugar — `<!-- mention: hollow-magical -->a região não é magical<!-- /mention -->` — e a liberação cobre aquele trecho e aquela regra, nada mais. Ela não verifica se a palavra está sendo mencionada em vez de usada; o que faz é deixar a afirmação explícita e revisável, em vez de deixar como única saída suspender a regra inteira.
+
+Duas coisas para esperar em vez de descobrir: mais dos seus primeiros instintos serão orações do que sintagmas nominais, então mais deles vão parar nas checagens manuais — que são uma releitura, não anotações que você precise escrever, e só *as suas próprias* exclusões exigem resposta por escrito — e é mais provável que caia um enquadramento que o briefing não sustenta, que é exatamente para isso que existem o `frame_fit` e uma nova distribuição.
+
+O `references/example-ritual-concept.md` é um exemplo completo exatamente com esse formato: o rito de encerramento de uma padaria que trabalha na mesma rua há noventa anos, com seu contrato, suas abordagens e seu sidecar, checado pelos mesmos dois comandos.
 
 ## O que ela não vai fazer
 
@@ -204,7 +219,7 @@ O contrato, esse não dá para trocar. O portão o reconstrói a partir do que o
 > - **Afirmar que ninguém jamais pensou nisso.** Inverificável, então é proibido. Ela nomeia as coisas existentes mais próximas e declara a diferença.
 > - **Fabricar estranheza.** Quando a resposta convencional é a correta, a skill precisa dizer isso em uma frase, sair de si mesma e fazer o trabalho comum fora dela.
 > - **Encolher seu pedido para facilitar a spec.** O escopo é decomposto abertamente, nunca estreitado em silêncio.
-> - **Fingir que passar no portão significa boa ideia.** Prova que o trabalho foi feito, não que o conceito está certo. A skill diz isso na própria saída.
+> - **Fingir que passar no portão significa boa ideia.** Ele confere que as afirmações e os artefatos exigidos estão presentes, não que o conceito está certo. A habilidade diz isso na própria saída.
 
 ## Por dentro
 
@@ -228,6 +243,7 @@ skills/imagination-brainstorming/
 │   ├── example-concept.json    # o sidecar dela — ambos passam nos portões e servem de fixture
 │   ├── example-approaches.json # entrada da etapa 3, no formato que o divergence_check.py lê
 │   ├── example-banlist.json    # o contrato contra o qual tudo acima foi checado
+│   ├── example-ritual-*.{md,json,txt}  # um segundo exemplo completo que não é produto nem serviço
 │   ├── example-instincts.txt   # os doze instintos que o originaram
 │   ├── example-exclusions.txt  # e as três exclusões do próprio usuário
 │   └── decks/                  # famílias de perguntas · molduras · clichês · esquema da spec · esquema de abordagens

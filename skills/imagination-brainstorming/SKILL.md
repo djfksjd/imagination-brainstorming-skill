@@ -60,6 +60,29 @@ them until `scripts/divergence_check.py` exits 0.
 8. **A non-zero exit is never success.** A failed gate means rework, not
    resubmission with the numbers rounded.
 
+## Briefs that are not products
+
+The process, the question families, the frames and the spec contract apply to
+any subject. Two parts of the machinery do not, and knowing which is the
+difference between trusting the gate and being puzzled by it.
+
+- **The cliché phrase list is pitch-and-product vocabulary** - one-stop shop,
+  KPI dashboard, Uber for X, gamification. On a story, world, ritual or
+  mechanic brief almost none of it will ever fire. That is expected: on such a
+  brief the machine-checkable half of the contract does little, and the
+  session's own instincts and skeleton carry the weight. The hollow adjectives
+  and the forbidden moves still apply everywhere.
+- **A banned adjective can be ordinary vocabulary.** In fiction *magical* and
+  *delightful* denote rather than claim. Mark that use with
+  `<!-- mention: hollow-magical -->` (see stage 6) rather than editing the deck.
+
+Two consequences worth expecting rather than discovering: more of your first
+instincts will be clauses rather than noun phrases, so more of them land in the
+manual checks - which are a reread, not twelve notes to write; and a dealt
+frame is more likely to be one the brief cannot hold, which is what `frame_fit`
+and a redeal are for. `references/example-ritual-concept.md` is a complete
+worked example of exactly this shape.
+
 ## When not to use this
 
 Implementation planning (hand off instead), factual questions, copy edits,
@@ -81,7 +104,7 @@ into the skill folder.
 |---|---|---|
 | `scripts/deal.py` | Deals the question families and three mutually incompatible reframing lenses, one marked as the unsafe seat | 1 usage/deck error |
 | `scripts/banlist.py` | Builds the shared ban contract: model instincts + shared skeleton + the user's own exclusions | 2 too few instincts, or no skeleton |
-| `scripts/divergence_check.py` | Proves the three approaches are alternatives rather than one proposal and two decoys | 3 does not diverge |
+| `scripts/divergence_check.py` | Refuses a set of approaches that is one proposal and two decoys: shared frame categories, restated summaries, coinciding failure modes, unequal detail | 3 does not diverge |
 | `scripts/spec_gate.py` | Validates `concept.json`, the written spec and the contract together, fail-closed | 2 gate failed |
 | `scripts/cliche_lint.py` | Lints any draft mid-session against the contract | 3 banned material |
 
@@ -162,6 +185,15 @@ gate requires a written answer for each one in
 `banlist_contract.manual_checks_cleared` - one line per exclusion saying how the
 concept avoids it.
 
+Your own long instincts land in the same list, and how many depends entirely on
+the subject: a product instinct is a three-word noun phrase and becomes a
+matchable ban, while a story, world, ritual or mechanic instinct is naturally a
+clause and cannot be. Those are a **reread, not a written answer**. The gate
+names them in a warning and does not fail on them; only the user's own
+exclusions are answered in writing. The rule used to require an answer for
+every long entry, which was invisible on a product brief and meant twelve
+mandatory notes on a narrative one that no document had mentioned.
+
 ### 3. Divergence
 
 Build one approach per dealt frame. Each must occupy its frame's move, contain
@@ -181,10 +213,21 @@ approach:
 ```json
 {"approaches": [
   {"id": "spoken-form", "frame_id": "conversation-only", "unsafe_seat": true,
-   "summary": "what it is, what it asks of whom, and what makes it this frame (120+ units)",
-   "failure_mode": "how this one actually fails in this brief (60+ units)"}
+   "summary": "what it is, what it asks of whom, and what makes it this frame (96+ units)",
+   "failure_mode": "how this one actually fails in this brief (48+ units)",
+   "frame_fit": "what in this brief plays the part the frame's must_contain names (40+ units)"}
 ]}
 ```
+
+`frame_fit` is where a frame the brief cannot hold becomes visible. Every frame
+names one thing its approach must contain - the sentence people will actually
+say, the repair procedure and the spare parts, the threshold where the kind of
+thing changes - and you write what plays that part here. If nothing can, the
+frame is not occupiable by this brief: say so, redeal with `--run 2`, and do
+not argue it. `designed-for-repair` was dealt into the unsafe seat for a
+one-off closing rite that happens once and has no maker and no spare parts, and
+the user was shown a full-length argument for it. The check requires the claim;
+it cannot check that the claim is true.
 
 `references/decks/approaches-schema.json` is the full field list with the floors
 and thresholds this check applies; `references/example-approaches.json` is a
@@ -216,7 +259,14 @@ must state:
 - **what is now impossible** that the ordinary version allows;
 - **the boring half** - the recurring task, the sign-off, the queue, the monthly
   reconciliation. This is where a concept becomes real, and it is usually the
-  most useful material in the session.
+  most useful material in the session;
+- **how it survives its own failure mode** - the approach you chose already
+  stated how it fails in this brief. Write what the design does about that in
+  `chosen.answers_failure_mode`. The gate refuses a spec that never wrote one
+  and refuses an answer that is the failure restated; it cannot judge whether
+  the failure is fatal or whether your answer works, so it prints the declared
+  failure beside your answer for whoever reads the verdict. A concept that
+  declares its own collapse and moves on used to pass here first try.
 
 Present the design in sections, scaled to their complexity, and ask after each
 whether it holds. Go back when something does not.
@@ -236,25 +286,42 @@ scripts/spec_gate.py --concept <work>/concept.json \
   --markdown docs/concepts/<file>.md --banlist <work>/banlist.json
 ```
 
-All three arguments are required, and they must belong to the same session. The
-gate rebuilds the contract from what `concept.json` declares - the same
-classification `banlist.py` applied - and every resulting ban, every one of the
-user's long exclusions and every entry of the bundled cliché deck must be
-present in the file you pass. The ban list must also name the same brief as
-`concept.json` - a contract built for a bakery launch used to validate a
-concept about a hospital ward. A contract written by hand, trimmed, or carried
-over from another session fails, and the deck is linted against whatever
-arrives, so a shorter file cannot mean a shorter lint. The brief comparison is
-a floor on subject matter, not proof of provenance: two sessions on the same
-subject still validate each other's contracts, and whoever writes both files
-can write two briefs that overlap. It raises the cost of substituting a
-contract from nothing to rewriting it. It also checks that the written spec
+All three arguments are required, and the gate checks that they are consistent
+with each other - not that they came from one session, which nothing here can
+establish. It rebuilds the contract from what `concept.json` declares - the
+same classification `banlist.py` applied - and every resulting ban, every one
+of the user's long exclusions and every entry of the bundled cliché deck must
+be present in the file you pass. The ban list and `concept.json` must record
+the same skeleton and the same brief, string for string, and the ban list's
+brief must name a subject rather than a word: that join used to be a word
+overlap at 0.5 and it failed in both directions, passing a contract whose brief
+was the single word "ward" and refusing an honest rewording of the author's own
+brief in synonyms. The free-form `brief` field in `concept.json`, which exists
+to restate and expand the ask, is compared only as a warning. A contract
+written by hand, trimmed, or carried over from another session fails on the
+replay, and the deck is linted against whatever arrives, so a shorter file
+cannot mean a shorter lint. The gate also checks that the written spec
 actually asserts the concept. The refusal, what becomes impossible, the
 first-use scene and every open question are marked with
 `<!-- bind: <field> -->` ... `<!-- /bind -->` and compared to the sidecar
 exactly - each exactly once, inside its own section, as plain prose. A
 similarity score was tried first and could not separate a proposition being
 asserted from the same words quoted inside a sentence that rejects them.
+
+A banned word is sometimes being quoted or denied rather than used - "the
+region is not magical" was refused for saying so. Mark that span in place:
+
+```markdown
+<!-- mention: hollow-magical -->The region is not magical<!-- /mention -->
+```
+
+The release covers that span and that rule id only; everything outside it, and
+every other rule inside it, is linted as before. An unknown or unnamed id is
+refused, and every mention is printed in the verdict. This cannot verify that
+the word is really mentioned rather than used - a regex cannot tell an
+assertion from a quotation, which is the whole reason the marker exists. It
+makes the claim explicit, local and reviewable instead of leaving a blanket
+release as the only escape.
 
 There is no `--allow` on this gate or on `divergence_check.py`, and the gate
 does not honour the `allowed` field of the ban list either. An exception
@@ -355,6 +422,8 @@ Any yes sends it back a stage.
 - Would this spec let a stranger build the obvious thing and claim they followed it?
 - Did the user's excitement, rather than the premise work, decide this?
 - Are the open questions real, or are they decoration?
+- Did the chosen approach's stated failure mode get answered, or only acknowledged?
+- Could any of the three frames not actually be occupied by this brief?
 - Is there anything here I would be unable to defend if the user asked "why
   this and not the ordinary version?"
 
@@ -367,6 +436,10 @@ Any yes sends it back a stage.
 - `references/example-approaches.json` - stage 3 input in the shape the check reads
 - `references/example-banlist.json` - the contract those two were gated against
 - `references/example-instincts.txt`, `references/example-exclusions.txt` - what it was built from
+- `references/example-ritual-concept.json`, `references/example-ritual-concept.md`,
+  `references/example-ritual-approaches.json`, `references/example-ritual-banlist.json`,
+  `references/example-ritual-instincts.txt`, `references/example-ritual-exclusions.txt` -
+  a second complete example that is not a product or a service: a closing rite for a bakery
 - `references/decks/` - question families, frames, clichés, spec schema, approaches schema
 
 Every example is runnable. From this directory:
@@ -384,4 +457,8 @@ scripts/divergence_check.py --approaches references/example-approaches.json \
 scripts/spec_gate.py --concept references/example-concept.json \
   --markdown references/example-concept.md \
   --banlist references/example-banlist.json
+
+scripts/spec_gate.py --concept references/example-ritual-concept.json \
+  --markdown references/example-ritual-concept.md \
+  --banlist references/example-ritual-banlist.json
 ```
