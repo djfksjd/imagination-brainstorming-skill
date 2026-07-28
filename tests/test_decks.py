@@ -13,7 +13,7 @@ MIN_SIZE = {"question-families": 10, "frames": 30}
 
 
 def test_all_decks_present(decks):
-    assert set(decks) == {"question-families", "frames", "cliches", "spec-schema"}
+    assert set(decks) == {"question-families", "frames", "cliches", "spec-schema", "approaches-schema"}
 
 
 def test_question_families_are_usable(decks):

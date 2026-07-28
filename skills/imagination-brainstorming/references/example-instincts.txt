@@ -1,0 +1,12 @@
+handover app with structured form
+digitised SBAR template
+voice-to-text shift summary
+AI summary of the shift
+ward status board
+checklist with sign-off
+chat channel per patient
+task board with cards
+wearable that records rounds
+auto-transcribed nurse notes
+handover quality score
+smart whiteboard at the station

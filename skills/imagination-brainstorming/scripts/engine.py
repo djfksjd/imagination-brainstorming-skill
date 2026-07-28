@@ -25,7 +25,7 @@ VERSION = "0.3.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 DECK_DIR = SKILL_DIR / "references" / "decks"
 
-DECK_NAMES = ("question-families", "frames", "cliches", "spec-schema")
+DECK_NAMES = ("question-families", "frames", "cliches", "spec-schema", "approaches-schema")
 
 # Words that carry no information in a comparison of two ideas. Removed before
 # measuring overlap so that "the user" appearing in both does not make two

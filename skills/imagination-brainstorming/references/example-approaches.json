@@ -1,0 +1,31 @@
+{
+  "note": "The three approaches from the shipped worked example, in the shape divergence_check.py reads. Their fields are documented in references/decks/approaches-schema.json. Regenerate nothing: this file is written by hand at stage 3, one approach per dealt frame.",
+  "brief": "A way for a hospital ward to hand over shifts. The stated ask was a handover tool; the session established that the ward's actual problem is unfinished obligations dying at the boundary between two people, not information failing to be recorded.",
+  "run": 1,
+  "approaches": [
+    {
+      "id": "spoken-form",
+      "frame_id": "conversation-only",
+      "unsafe_seat": true,
+      "chosen": false,
+      "summary": "No artefact at all. The ward adopts one fixed spoken sentence per patient, said at the bedside with the patient awake and present: what is outstanding, who it now falls to, and by when. The design is the grammar of that sentence plus the practice around it - the incoming nurse repeats it back, the patient can correct it, and nothing is typed. Training is a laminated card and two weeks of a senior nurse insisting.",
+      "failure_mode": "Nothing durable is produced, so the trust still needs its written record made separately, and spoken discipline is the first thing a short-staffed ward abandons at 03:00. Six weeks in, it survives only on the shifts where the sister who championed it is working."
+    },
+    {
+      "id": "ward-ledger",
+      "frame_id": "hundred-times",
+      "unsafe_seat": false,
+      "chosen": false,
+      "summary": "Stop pairing nurses altogether. Every outstanding duty on the ward enters one visible ledger with an owner and an expiry time, and shift change becomes a bulk reassignment event rather than a conversation - designed for a hundred-bed unit or a whole hospital where person-to-person pairing has already broken down. Escalation is automatic when an item passes its expiry twice.",
+      "failure_mode": "An owner-less pool becomes a landfill. Items age, the oldest are quietly ignored, and responsibility spreads thin enough that no individual feels the weight of any particular duty - the precise failure that pairing exists to prevent."
+    },
+    {
+      "id": "pre-written",
+      "frame_id": "instant-version",
+      "unsafe_seat": false,
+      "chosen": true,
+      "summary": "The handover is finished before the shift ends. It assembles itself continuously from what already happened - orders placed, medication given, calls made, results still pending - and by 19:00 a complete draft exists that nobody composed. The outgoing nurse's only act is to correct or refuse it in the last ten minutes at the station, line by line. Each line must carry either an outstanding duty with a named owner and a deadline, or an explicit statement that nothing is outstanding, stamped with who checked and when.",
+      "failure_mode": "Presumption. A draft that is ninety per cent right trains people to skim, and the tenth that is wrong is exactly the unusual thing that mattered. The counter-design is that no line can be accepted in bulk, but that is a bet on friction surviving contact with a busy ward."
+    }
+  ]
+}

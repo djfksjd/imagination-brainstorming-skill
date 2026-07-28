@@ -136,29 +136,40 @@ It redeals from a fresh run, adds *every element of the previous round* to the c
 
 ### Running the scripts yourself
 
-Python 3.11, standard library, nothing to install. Scripts live in `skills/imagination-brainstorming/scripts/`; write working files to a scratch directory, never into the skill folder.
+Python 3.11, standard library, nothing to install. The skill lives in `skills/imagination-brainstorming/`, and every command below is written to run from inside that directory. Write working files to a scratch directory, never into the skill folder.
 
 ```bash
+cd skills/imagination-brainstorming
+SKELETON="A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end."
+
 # 1 · deal the question families and three incompatible frames
 python3 scripts/deal.py --brief "a way for our ward to hand over shifts" --run 1 --out /tmp/work
 
-# 2 · build the contract — twice, and the order matters
-python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
-    --skeleton "a checklist filled in at the end of a shift" --out /tmp/work
-#    …show it to the user, get their answer, and only then:
-python3 scripts/banlist.py --brief "<brief>" --instincts instincts.txt \
-    --skeleton "a checklist filled in at the end of a shift" \
-    --user exclusions.txt --confirmed --out /tmp/work
+# 2 · build the contract — twice, and the order matters. --instincts is a file
+#     you write: one likely answer per line, twelve of them.
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --skeleton "$SKELETON" --out /tmp/work
+#    …show it to the user as exclusions, get their answer, and only then:
+python3 scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+    --instincts references/example-instincts.txt --user references/example-exclusions.txt \
+    --skeleton "$SKELETON" --confirmed --out /tmp/work
 
 # 3 · prove the three approaches are actually three
-python3 scripts/divergence_check.py --approaches /tmp/work/approaches.json --banlist /tmp/work/banlist.json
+python3 scripts/divergence_check.py --approaches references/example-approaches.json \
+    --banlist references/example-banlist.json
 
 # 4 · gate the spec, its sidecar and the contract together — all three required
-python3 scripts/spec_gate.py --concept /tmp/work/concept.json \
-    --markdown docs/concepts/2026-07-28-handover-concept.md --banlist /tmp/work/banlist.json
+python3 scripts/spec_gate.py --concept references/example-concept.json \
+    --markdown references/example-concept.md --banlist references/example-banlist.json
 ```
 
+Every file named there ships in the repo, so the block runs as written and all four steps exit `0`; step 2 reproduces `references/example-banlist.json` exactly. Swap in your own session's files as you go.
+
+**`approaches.json` is written by hand.** `deal.py` deals the frames; you write one approach per dealt frame into an object with an `approaches` key — an `id`, a `frame_id` from the frames deck, a `summary` of at least 120 units, a `failure_mode` of at least 60 that says how *this* one fails in *this* brief, and `unsafe_seat` set true on exactly one of them. `references/decks/approaches-schema.json` documents every field and every floor the check applies; `references/example-approaches.json` is a passing file to copy the shape from.
+
 `--confirmed` records consent that has already happened. Setting it before the user has seen the list is a lie the rest of the pipeline then relies on, and the gate has no way to detect it — which is why it is a two-step call rather than one flag.
+
+The contract itself cannot be swapped, though. The gate rebuilds it from what `concept.json` declares and refuses any file missing one of the burned instincts, one of the user's own exclusions, or an entry of the bundled cliché deck — and that deck is linted against the spec whatever contract arrives, so handing the gate a shorter file can never mean a shorter lint.
 
 `cliche_lint.py` is for **drafts mid-session**. Run it on a finished spec and it will flag the spec's own ban-list section; `spec_gate.py` is the one that lints a finished spec, and it excises that section first.
 
@@ -215,7 +226,11 @@ skills/imagination-brainstorming/
 │   ├── worked-example.md       # one complete session, including what was cut
 │   ├── example-concept.md      # the spec that session produced
 │   ├── example-concept.json    # its sidecar — both pass the gates, both are test fixtures
-│   └── decks/                  # question families · frames · clichés · spec schema
+│   ├── example-approaches.json # stage 3 input, in the shape divergence_check.py reads
+│   ├── example-banlist.json    # the contract all of the above were gated against
+│   ├── example-instincts.txt   # the twelve instincts it was built from
+│   ├── example-exclusions.txt  # and the user's own three
+│   └── decks/                  # question families · frames · clichés · spec schema · approaches schema
 └── scripts/                    # deal · banlist · divergence_check · spec_gate · cliche_lint
 ```
 

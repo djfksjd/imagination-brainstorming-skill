@@ -173,6 +173,24 @@ Argue for it honestly and in the same detail as the others. A strawman in that
 seat turns the other two into decoys, which is the exact failure this stage
 exists to prevent.
 
+Write them to `<work>/approaches.json` yourself - nothing generates that file;
+`deal.py` deals the frames and you write one approach per dealt frame. It is a
+JSON object with an `approaches` key (a bare list also works), one object per
+approach:
+
+```json
+{"approaches": [
+  {"id": "spoken-form", "frame_id": "conversation-only", "unsafe_seat": true,
+   "summary": "what it is, what it asks of whom, and what makes it this frame (120+ units)",
+   "failure_mode": "how this one actually fails in this brief (60+ units)"}
+]}
+```
+
+`references/decks/approaches-schema.json` is the full field list with the floors
+and thresholds this check applies; `references/example-approaches.json` is a
+passing file to copy the shape from. `chosen` is added later, after the user
+picks, and is read by `spec_gate.py` rather than here.
+
 ```bash
 scripts/divergence_check.py --approaches <work>/approaches.json --banlist <work>/banlist.json
 ```
@@ -218,10 +236,13 @@ scripts/spec_gate.py --concept <work>/concept.json \
   --markdown docs/concepts/<file>.md --banlist <work>/banlist.json
 ```
 
-All three arguments are required, and they must belong to the same session: the
-gate checks that the ban list you pass is confirmed, carries the same skeleton
-as `concept.json`, and contains the instincts the sidecar claims. Passing a
-different or unconfirmed contract fails. It also checks that the written spec
+All three arguments are required, and they must belong to the same session. The
+gate rebuilds the contract from what `concept.json` declares - the same
+classification `banlist.py` applied - and every resulting ban, every one of the
+user's long exclusions and every entry of the bundled cliché deck must be
+present in the file you pass. A contract written by hand, trimmed, or carried
+over from another session fails, and the deck is linted against whatever
+arrives, so a shorter file cannot mean a shorter lint. It also checks that the written spec
 actually asserts the concept. The refusal, what becomes impossible, the
 first-use scene and every open question are marked with
 `<!-- bind: <field> -->` ... `<!-- /bind -->` and compared to the sidecar
@@ -321,4 +342,25 @@ Any yes sends it back a stage.
 - `references/concept-template.md` - the spec structure and its section markers
 - `references/worked-example.md` - one complete session, including what was cut
 - `references/example-concept.json` - a sidecar that passes both gates
-- `references/decks/` - question families, frames, clichés, spec schema
+- `references/example-concept.md` - the spec that session produced
+- `references/example-approaches.json` - stage 3 input in the shape the check reads
+- `references/example-banlist.json` - the contract those two were gated against
+- `references/example-instincts.txt`, `references/example-exclusions.txt` - what it was built from
+- `references/decks/` - question families, frames, clichés, spec schema, approaches schema
+
+Every example is runnable. From this directory:
+
+```bash
+scripts/banlist.py --brief "a way for our ward to hand over shifts" \
+  --instincts references/example-instincts.txt \
+  --user references/example-exclusions.txt \
+  --skeleton "A capture tool that turns a spoken conversation into a structured record, with completeness enforced by a form and a signature at the end." \
+  --confirmed --out /tmp/work        # reproduces references/example-banlist.json
+
+scripts/divergence_check.py --approaches references/example-approaches.json \
+  --banlist references/example-banlist.json
+
+scripts/spec_gate.py --concept references/example-concept.json \
+  --markdown references/example-concept.md \
+  --banlist references/example-banlist.json
+```

@@ -42,6 +42,10 @@ except ImportError:
     )
 
 FAIL_CODE = 3
+# The floors and thresholds live in references/decks/approaches-schema.json,
+# which is also where the shape of approaches.json is documented for whoever has
+# to write one. These mirror the deck so that --count has a default before the
+# deck is read; tests pin them to it.
 DEFAULT_COUNT = 3
 SUMMARY_MAX_OVERLAP = 0.55
 FAILURE_MAX_OVERLAP = 0.50
@@ -87,6 +91,17 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
     failures: list[str] = []
     warnings: list[str] = []
 
+    # No --schema flag on any caller: a caller-supplied schema could set every
+    # floor to zero and leave a check that reports success without checking.
+    schema = load_deck("approaches-schema")
+    mins, thresholds = schema["min_units"], schema["thresholds"]
+    min_summary = mins["summary"]
+    min_failure = mins["failure_mode"]
+    max_summary_overlap = thresholds["max_summary_overlap"]
+    max_failure_overlap = thresholds["max_failure_overlap"]
+    min_detail_ratio = thresholds["min_detail_ratio"]
+    min_distinct_ratio = thresholds["min_distinct_ratio"]
+
     if count < DEFAULT_COUNT:
         # Lowering the count would turn the check into a formality: with one or
         # two approaches there is nothing to compare, and every pairwise test
@@ -114,10 +129,10 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
             failures.append(f"{label}: unknown frame_id '{frame_id}'")
         else:
             categories.append(frame_table[frame_id]["category"])
-        if text_units(text_of(a.get("summary"))) < MIN_SUMMARY_UNITS:
-            failures.append(f"{label}: summary under {MIN_SUMMARY_UNITS} units - too thin to be judged against the others")
-        if text_units(text_of(a.get("failure_mode"))) < MIN_FAILURE_UNITS:
-            failures.append(f"{label}: failure_mode under {MIN_FAILURE_UNITS} units - state how this one actually fails here")
+        if text_units(text_of(a.get("summary"))) < min_summary:
+            failures.append(f"{label}: summary under {min_summary} units - too thin to be judged against the others")
+        if text_units(text_of(a.get("failure_mode"))) < min_failure:
+            failures.append(f"{label}: failure_mode under {min_failure} units - state how this one actually fails here")
         if "unsafe" in a:
             # One field, one meaning. The alias let an approach be seated in the
             # check while every documented unsafe_seat field said false.
@@ -127,10 +142,10 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
         if a.get("unsafe_seat") is True:
             unsafe.append(label)
         failure_mode = text_of(a.get("failure_mode"))
-        if failure_mode and distinct_ratio(failure_mode) < MIN_DISTINCT_RATIO:
+        if failure_mode and distinct_ratio(failure_mode) < min_distinct_ratio:
             failures.append(f"{label}.failure_mode: repeated filler rather than content")
         summary = text_of(a.get("summary"))
-        if summary and distinct_ratio(summary) < MIN_DISTINCT_RATIO:
+        if summary and distinct_ratio(summary) < min_distinct_ratio:
             failures.append(f"{label}.summary: repeated filler rather than content")
 
     if len(set(categories)) != len(categories):
@@ -154,8 +169,8 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
                 failures.append(f"{seen[key]} and {label} have an identical {field}")
             else:
                 seen[key] = label
-    lengths = [len(s) for s in summaries if s]
-    if lengths and min(lengths) < DETAIL_RATIO * max(lengths):
+    lengths = [text_units(s) for s in summaries if s]
+    if lengths and min(lengths) < min_detail_ratio * max(lengths):
         failures.append(
             "one approach is described in far less detail than another; unequal detail is how a decoy is built"
         )
@@ -166,18 +181,18 @@ def check(approaches: list[dict[str, Any]], frames: dict[str, Any], count: int) 
             s = jaccard(summaries[i], summaries[j])
             f = jaccard(failure_modes[i], failure_modes[j])
             pairs.append({"a": ids[i], "b": ids[j], "summary_overlap": round(s, 2), "failure_overlap": round(f, 2)})
-            if s > SUMMARY_MAX_OVERLAP:
+            if s > max_summary_overlap:
                 failures.append(f"{ids[i]} and {ids[j]} restate each other (summary overlap {s:.2f})")
-            elif s > SUMMARY_MAX_OVERLAP - 0.2:
+            elif s > max_summary_overlap - 0.2:
                 warnings.append(
                     f"{ids[i]} and {ids[j]} are close (summary overlap {s:.2f}); read them again as one sentence each"
                 )
-            if f > FAILURE_MAX_OVERLAP:
+            if f > max_failure_overlap:
                 failures.append(
                     f"{ids[i]} and {ids[j]} fail the same way (failure overlap {f:.2f}) - "
                     "two ideas that die of the same cause are one idea"
                 )
-            elif f > FAILURE_MAX_OVERLAP - 0.15:
+            elif f > max_failure_overlap - 0.15:
                 warnings.append(f"{ids[i]} and {ids[j]} fail in similar ways (overlap {f:.2f}); worth rewriting one")
 
     # Synonyms defeat token overlap: three descriptions of one idea, written in
