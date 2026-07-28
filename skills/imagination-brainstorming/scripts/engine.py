@@ -416,10 +416,14 @@ def phrase_regex(phrase: str) -> re.Pattern[str]:
     plural suffix is allowed on the final Latin word, and Latin matches fall on
     word boundaries so that 'badge' does not fire inside 'badgering'.
 
-    Agglutinative scripts get no trailing boundary: Korean attaches particles
-    directly to the noun, so requiring one would mean a ban on 대시보드 never
-    fires on 대시보드는 - the ban list would be decorative for most of the
-    languages this skill claims to work in.
+    Agglutinative scripts get no trailing boundary. Korean attaches its
+    particles directly to the noun with no space and no punctuation between
+    them: the noun romanized as "daesibodeu" (dashboard) appears in a sentence
+    as "daesibodeu-neun", "daesibodeu-reul", "daesibodeu-eseo", one written
+    word each time. Requiring a word boundary after the phrase would mean a ban
+    on the noun never fires on any of its inflected forms, which is most of its
+    occurrences - the ban list would be decorative for most of the languages
+    this skill claims to work in. Han and kana run together the same way.
     """
     words = [w for w in re.split(r"[\s\-_]+", normalize(phrase)) if w]
     if not words:

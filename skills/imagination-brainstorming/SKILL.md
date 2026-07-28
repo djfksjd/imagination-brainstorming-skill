@@ -213,9 +213,9 @@ approach:
 ```json
 {"approaches": [
   {"id": "spoken-form", "frame_id": "conversation-only", "unsafe_seat": true,
-   "summary": "what it is, what it asks of whom, and what makes it this frame (96+ units)",
-   "failure_mode": "how this one actually fails in this brief (48+ units)",
-   "frame_fit": "what in this brief plays the part the frame's must_contain names (40+ units)"}
+   "summary": "what it is, what it asks of whom, and what makes it this frame (86+ units)",
+   "failure_mode": "how this one actually fails in this brief (43+ units)",
+   "frame_fit": "what in this brief plays the part the frame's must_contain names (36+ units)"}
 ]}
 ```
 
@@ -230,8 +230,13 @@ the user was shown a full-length argument for it. The check requires the claim;
 it cannot check that the claim is true.
 
 `references/decks/approaches-schema.json` is the full field list with the floors
-and thresholds this check applies; `references/example-approaches.json` is a
-passing file to copy the shape from. `chosen` is added later, after the user
+and thresholds this check applies. The floors are counted in units, not
+characters, and they were measured rather than assumed: one passage translated
+into eight scripts, at a length worth accepting and at a length worth refusing,
+measured under the function that runs. See `spec-schema.json`'s
+`calibration_note` for the numbers and for the one thing a single floor cannot
+do - be equally strict in every script. `references/example-approaches.json` is
+a passing file to copy the shape from. `chosen` is added later, after the user
 picks, and is read by `spec_gate.py` rather than here.
 
 ```bash

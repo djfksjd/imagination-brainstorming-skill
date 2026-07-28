@@ -51,9 +51,9 @@
     "unsafe_seats": 1
   },
   "min_units": {
-    "summary": 96,
-    "failure_mode": 48,
-    "frame_fit": 40
+    "summary": 86,
+    "failure_mode": 43,
+    "frame_fit": 36
   },
   "thresholds": {
     "max_summary_overlap": 0.55,
@@ -61,6 +61,6 @@
     "min_detail_ratio": 0.4,
     "min_distinct_ratio": 0.3
   },
-  "units_note": "Minimums are counted in units, not code points: a letter or digit counts one, a wide letter or digit counts two, punctuation and whitespace count nothing, and combining marks count up to two per base letter or digit. Counting code points made the same amount of argument about twice as hard to submit in Korean, Japanese or Chinese; stripping marks did the same to Thai, Devanagari, Arabic and Hebrew. Both floors here were multiplied by 0.8 when word gaps stopped counting, so the bar on real prose is unchanged. engine.text_units is the single definition and the sibling skill states the same one.",
+  "units_note": "Minimums are counted in units, not code points: a letter or digit counts one, a wide letter or digit counts two, punctuation and whitespace count nothing, and combining marks count up to two per base letter or digit. Both floors here are the same 0.72 ratio as spec-schema.json's, which was measured across eight scripts rather than scaled from one - see that file's calibration_note.",
   "example": "references/example-approaches.json"
 }

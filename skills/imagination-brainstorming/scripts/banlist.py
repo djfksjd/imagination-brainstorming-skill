@@ -48,7 +48,7 @@ except ImportError:
     )
 
 MIN_INSTINCTS = 8
-MIN_SKELETON_UNITS = 32
+MIN_SKELETON_UNITS = 29
 MATCHABLE_MAX_WORDS = 6
 BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)])\s*")
 GATE_FAIL = 2

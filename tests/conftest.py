@@ -69,6 +69,30 @@ def run():
     return _run
 
 
+@pytest.fixture(scope="session")
+def schema():
+    sys.path.insert(0, str(SCRIPTS))
+    from engine import load_deck  # noqa: E402
+    return load_deck("spec-schema")
+
+
+@pytest.fixture
+def check(banlist, schema):
+    """Run check_concept directly and return its failures as one string. Shared
+    because the length floors are now exercised from two files."""
+    sys.path.insert(0, str(SCRIPTS))
+    import spec_gate  # noqa: E402
+    from engine import load_banlist, load_deck  # noqa: E402
+
+    frames, cliches = load_deck("frames"), load_deck("cliches")
+    contract = load_banlist(str(banlist))
+
+    def _check(concept: dict) -> str:
+        return " | ".join(spec_gate.check_concept(concept, schema, frames, contract, cliches)["failures"])
+
+    return _check
+
+
 @pytest.fixture
 def instincts_file(tmp_path: Path, example: dict) -> Path:
     path = tmp_path / "instincts.txt"
