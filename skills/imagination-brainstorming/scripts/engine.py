@@ -493,10 +493,82 @@ def deck_lint_entries(cliches: dict[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
+MENTION = re.compile(r"<!--\s*mention:\s*([^<>]*?)\s*-->(.*?)<!--\s*/mention\s*-->", re.S)
+MENTION_MARKER = re.compile(r"<!--\s*/?mention(?::[^<>]*?)?\s*-->")
+
+
+def extract_mentions(text: str) -> list[tuple[str, set[str]]]:
+    """The spans marked as mentioning a banned phrase rather than using it.
+
+    `<!-- mention: hollow-magical -->The region is not magical<!-- /mention -->`
+    releases `hollow-magical` inside that span and nowhere else.
+    """
+    out: list[tuple[str, set[str]]] = []
+    for match in MENTION.finditer(text):
+        ids = {i.strip() for i in match.group(1).replace(";", ",").split(",") if i.strip()}
+        body = match.group(2)
+        if body.strip():
+            out.append((body, ids))
+    return out
+
+
+def strip_mention_markers(text: str) -> str:
+    """Remove the marker comments, keep what they wrap.
+
+    The marker names a ban id, and several ids contain the banned word - the
+    comment `<!-- mention: hollow-magical -->` would otherwise be flagged for
+    saying 'magical'.
+    """
+    return MENTION_MARKER.sub("", text)
+
+
+def _released_spans(line: str, mentions: list[tuple[str, set[str]]], norm: bool) -> list[tuple[int, int, set[str]]]:
+    """Where in this line a mention span sits, and which ids it releases.
+
+    Matched line by line, so a span covering several lines releases each of its
+    lines separately and a marker never has to sit on the line it opens.
+    """
+    hay = normalize(line) if norm else line
+    spans: list[tuple[int, int, set[str]]] = []
+    if not hay:
+        return spans
+    for body, ids in mentions:
+        for piece in body.splitlines():
+            needle = normalize(piece) if norm else piece.strip()
+            if len(needle) < 3:
+                continue
+            start = 0
+            while True:
+                found = hay.find(needle, start)
+                if found < 0:
+                    break
+                spans.append((found, found + len(needle), ids))
+                start = found + 1
+    return spans
+
+
+def _is_released(spans: list[tuple[int, int, set[str]]], start: int, end: int, rule_id: str) -> bool:
+    return any(s <= start and end <= t and rule_id in ids for s, t, ids in spans)
+
+
 def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str, Any]],
-              allow: set[str] | None = None) -> list[dict[str, Any]]:
-    """Find banned phrases and pitch-shaped sentences, with line numbers."""
+              allow: set[str] | None = None,
+              mentions: list[tuple[str, set[str]]] | None = None) -> list[dict[str, Any]]:
+    """Find banned phrases and pitch-shaped sentences, with line numbers.
+
+    `mentions` releases named ids inside named spans only. A regex cannot tell
+    a word being used from the same word being quoted or denied - "the region
+    is not magical" was refused for saying so - and this is the same blindness
+    a similarity score had when it could not separate an assertion from a
+    quotation, which is why bind markers replaced it here. The fix is the same
+    shape: the author marks the span, names the id, and the mark is visible in
+    the source and reported at the gate. What it does not do is decide anything
+    for itself. It cannot verify that the word really is mentioned rather than
+    used; it makes the claim explicit, local to one span, and reviewable,
+    instead of leaving the only escape a blanket release of the whole rule.
+    """
     allow = allow or set()
+    mentions = mentions or []
     findings: list[dict[str, Any]] = []
     compiled = []
     for e in entries:
@@ -519,21 +591,27 @@ def lint_text(text: str, entries: list[dict[str, Any]], patterns: list[dict[str,
         norm = normalize(line)
         if not norm:
             continue
+        norm_spans = _released_spans(line, mentions, norm=True)
+        raw_spans = _released_spans(line, mentions, norm=False)
         for e, rx in compiled:
-            m = rx.search(norm)
-            if m:
+            for m in rx.finditer(norm):
+                if _is_released(norm_spans, m.start(), m.end(), e["id"]):
+                    continue
                 findings.append({
                     "id": e["id"], "kind": "phrase", "tier": e["tier"],
                     "group": e.get("group", ""), "source": e.get("source", ""),
                     "line": lineno, "match": m.group(0), "excerpt": line.strip()[:160],
                 })
+                break
         for p, rx in compiled_patterns:
-            m = rx.search(line)
-            if m:
+            for m in rx.finditer(line):
+                if _is_released(raw_spans, m.start(), m.end(), p["id"]):
+                    continue
                 findings.append({
                     "id": p["id"], "kind": "pattern", "tier": p["tier"],
                     "group": "structural", "source": "deck",
                     "line": lineno, "match": m.group(0), "excerpt": line.strip()[:160],
                     "why": p.get("why", ""),
                 })
+                break
     return findings

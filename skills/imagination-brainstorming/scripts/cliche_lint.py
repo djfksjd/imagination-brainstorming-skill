@@ -26,15 +26,15 @@ from typing import Any
 
 try:
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_banlist, load_deck, lint_text,
-        read_text_arg,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
+        load_banlist, load_deck, lint_text, read_text_arg, strip_mention_markers,
     )
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
-        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, load_banlist, load_deck, lint_text,
-        read_text_arg,
+        VERSION, UsageParser, EngineError, csv_list, deck_lint_entries, die, extract_mentions,
+        load_banlist, load_deck, lint_text, read_text_arg, strip_mention_markers,
     )
 
 FAIL_CODE = 3
@@ -69,7 +69,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             entries = deck_lint_entries(cliches)
         draft = read_text_arg(args.draft)
-        findings = lint_text(draft, entries, patterns, set(csv_list(args.allow)))
+        mentions = extract_mentions(draft)
+        known = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
+        for body, ids in mentions:
+            unknown = sorted(i for i in ids if i not in known)
+            if not ids or unknown:
+                raise EngineError(
+                    f"a mention block names {'no rule id' if not ids else 'unknown rule id(s) ' + ', '.join(unknown)} "
+                    f"({body.strip()[:60]}...). Mark the span with the id printed in square brackets by this lint"
+                )
+        findings = lint_text(strip_mention_markers(draft), entries, patterns,
+                             set(csv_list(args.allow)), mentions)
     except EngineError as exc:
         die(str(exc), 1)
         return 1

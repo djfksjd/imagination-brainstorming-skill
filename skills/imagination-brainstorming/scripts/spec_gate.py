@@ -34,8 +34,8 @@ from typing import Any
 try:
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
-        distinct_ratio, jaccard, load_banlist, load_deck, lint_text, normalize, read_json_arg,
-        require_mapping, text_units,
+        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text, normalize,
+        read_json_arg, require_mapping, strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
     from banlist import classify as classify_exclusions  # type: ignore
@@ -44,8 +44,8 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from engine import (  # type: ignore
         VERSION, UsageParser, EngineError, content_tokens, coverage, csv_list, deck_lint_entries, die,
-        distinct_ratio, jaccard, load_banlist, load_deck, lint_text, normalize, read_json_arg,
-        require_mapping, text_units,
+        distinct_ratio, extract_mentions, jaccard, load_banlist, load_deck, lint_text, normalize,
+        read_json_arg, require_mapping, strip_mention_markers, text_units,
     )
     from divergence_check import check as divergence_check  # type: ignore
     from banlist import classify as classify_exclusions  # type: ignore
@@ -752,6 +752,42 @@ def check_markdown(markdown: str, schema: dict[str, Any], concept: dict[str, Any
     return failures
 
 
+def check_mentions(mentions: list[tuple[str, set[str]]], entries: list[dict[str, Any]],
+                   patterns: list[dict[str, Any]]) -> list[str]:
+    """A mention marker has to name a rule that exists, and name one.
+
+    The marker is the author asserting that a banned word appears here quoted
+    or denied rather than used. The gate cannot check that assertion - a regex
+    cannot tell an assertion from a quotation, which is the whole reason the
+    marker exists. What it can check is that the release is specific: a real id,
+    per span, and printed in the verdict so a reviewer sees every one.
+    """
+    failures: list[str] = []
+    known = {str(e.get("id")) for e in entries} | {str(p.get("id")) for p in patterns}
+    for body, ids in mentions:
+        if not ids:
+            failures.append(
+                f"markdown: a mention block names no rule id ({body.strip()[:60]}...) - a release that "
+                "names nothing releases everything, so name the id the span is quoting or denying"
+            )
+            continue
+        unknown = sorted(i for i in ids if i not in known)
+        if unknown:
+            failures.append(
+                f"markdown: mention block releases unknown rule id(s) {', '.join(unknown)} - the id must be "
+                "one this session lints against, as printed by cliche_lint.py in square brackets"
+            )
+    return failures
+
+
+def describe_mentions(mentions: list[tuple[str, set[str]]]) -> list[str]:
+    return [
+        f"the spec marks '{body.strip()[:60]}' as mentioning rather than using {', '.join(sorted(ids))}; "
+        "the gate cannot verify that, it only records that you claimed it here and nowhere else"
+        for body, ids in mentions if ids
+    ]
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -771,13 +807,15 @@ def main(argv: list[str] | None = None) -> int:
         result = check_concept(concept, schema, frames, banlist, cliches)
         result["failures"].extend(check_markdown(markdown, schema, concept))
 
+        entries = lint_entries(banlist, cliches)
+        patterns = lint_patterns(banlist, cliches)
+        mentions = extract_mentions(markdown)
+        result["failures"].extend(check_mentions(mentions, entries, patterns))
+        result["warnings"].extend(describe_mentions(mentions))
         blob = "\n".join(
             v for path, v in walk_strings(concept) if not path.startswith("banlist_contract")
-        ) + "\n" + lintable_markdown(markdown)
-        findings = lint_text(
-            blob, lint_entries(banlist, cliches), lint_patterns(banlist, cliches),
-            set(),
-        )
+        ) + "\n" + strip_mention_markers(lintable_markdown(markdown))
+        findings = lint_text(blob, entries, patterns, set(), mentions)
         banned = [f for f in findings if f["tier"] == "ban"]
         if banned:
             result["failures"].append(
