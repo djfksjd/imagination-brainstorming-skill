@@ -174,7 +174,8 @@ def render_human(payload: dict[str, Any]) -> str:
     lines.append("APPROACH FRAMES (must come out mutually incompatible):")
     for a in payload["approaches"]:
         seat = "  <- unsafe seat" if a["unsafe_seat"] else ""
-        lines.append(f"  {a['slot']}. [{a['category']}] {a['label']}{seat}")
+        lines.append(f"  {a['slot']}. [{a['frame_id']}] {a['label']} (category: {a['category']}){seat}")
+        lines.append(f"      frame_id: {a['frame_id']}  <- put this in approaches[].frame_id, not the category")
         lines.append(f"      move:     {a['move']}")
         lines.append(f"      include:  {a['must_contain']}")
         lines.append(f"      watch:    {a['characteristic_failure']}")
