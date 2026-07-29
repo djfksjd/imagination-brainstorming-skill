@@ -1,42 +1,82 @@
-# Imagination Brainstorming
+<div align="center">
 
-Imagination Brainstorming v0.4.1 is a small experimental **concept workshop**. It
-starts after a direction has been chosen and helps that idea survive its
-assumptions, trade-offs, ordinary operation, and native failure mode.
+# ◇ Imagination Brainstorming
 
-## Recommended combined plugin
+**Turn a chosen idea into a concept that can survive reality.**
 
-Most users should install [`djfksjd/imagination`](https://github.com/djfksjd/imagination)
-and invoke `$imagination`. It generates a portfolio with
-`imagination-engine`, waits for the user to choose, then routes the selected
-direction into this workshop on the next turn.
+A focused concept workshop for Codex and Claude Code.
 
-Install this standalone repository when you already have a selected direction
-or need to evaluate the workshop independently.
+[![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
+![Version](https://img.shields.io/badge/version-0.4.1-db2777)
+![Preference](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![License](https://img.shields.io/badge/license-MIT-0f766e)
 
-It no longer tries to generate the initial idea. For divergent ideation, use
-`imagination-engine`; use this skill to deepen the selected direction before
-implementation.
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
 
-The former question decks, ban contract, dealt frames, JSON sidecars, and
-fail-closed gates are preserved under
-[`legacy/v0.3.0/`](legacy/v0.3.0/) and are not loaded at runtime.
+</div>
 
-## What it does
+---
 
-- identifies the idea's load-bearing assumption;
-- compares it with the strongest conventional alternative;
-- explains the core mechanism and one concrete use;
-- states what the concept refuses and who pays for that choice;
-- develops the recurring operational work;
-- names the native failure mode, response, and falsifier;
-- records nearest existing approaches and real open decisions.
+> [!TIP]
+> **Most users should install [Imagination](https://github.com/djfksjd/imagination).**
+> It generates directions with Imagination Engine, waits for your choice, then
+> routes that selection into this workshop.
 
-It uses no runtime scripts and no absolute self-score. If the selected idea
-loses to the conventional alternative, the skill says so.
+Imagination Brainstorming starts **after a direction has been chosen**. It
+tests the idea against its goal, constraints, strongest alternative, ordinary
+operation and native failure mode before implementation begins.
 
-Implicit invocation is disabled during evaluation. Invoke
-`$imagination-brainstorming` explicitly and provide the chosen direction.
+```mermaid
+flowchart LR
+    A[Chosen direction] --> B[Constraint preflight]
+    B --> C[Pressure test]
+    C --> D[Decision-ready concept]
+    D --> E{Next decision}
+```
+
+## Try it
+
+```text
+Use $imagination-brainstorming to develop this selected direction. Show the
+first real use, recurring operational burden, native failure mode, falsifier,
+and the next decision we must make.
+```
+
+If the selected direction secretly violates the brief—or loses to a simpler
+alternative—the workshop says so instead of polishing it.
+
+## What the workshop examines
+
+| Lens | Question |
+|---|---|
+| Constraint preflight | Is an excluded mechanism returning under another name? |
+| Load-bearing assumption | What single belief would collapse the idea if false? |
+| Conventional competitor | Why does this earn its added complexity? |
+| Core mechanism | What observable cause changes the outcome? |
+| Boring half | Who owns recurring work, queues, exceptions and maintenance? |
+| Native failure | How does the defining mechanism fail on its own terms? |
+| Falsifier | What result should make the team stop or change direction? |
+
+The output is a concise concept memo, not code, scaffolding or an implementation
+plan.
+
+## Measured result
+
+In a fresh preregistered blind comparison against a strong plain prompt:
+
+| Metric | Treatment minus control |
+|---|---:|
+| Planning preference | **25–5 (83.3%)** |
+| Actionability | **+1.37** |
+| Decision fit | **+0.59** |
+| Causal clarity | **+0.59** |
+| Robustness | **+0.53** |
+| Token cost | `1.15×` |
+
+The 95% Wilson interval for preference was 66.4–92.7%. Judges were independent
+calls from the same model family rather than human domain users. See
+[`evals/README.md`](evals/README.md) and the
+[frozen result](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json).
 
 ## Standalone install
 
@@ -44,33 +84,27 @@ Implicit invocation is disabled during evaluation. Invoke
 curl -fsSL https://raw.githubusercontent.com/djfksjd/imagination-brainstorming-skill/main/install.sh | bash
 ```
 
-Example:
-
-```text
-Use $imagination-brainstorming to develop this chosen direction:
-the hospital handover should assemble during the shift, so the nurses correct
-and accept outstanding duties instead of composing a report at the end.
+```bash
+claude plugin marketplace add djfksjd/imagination-brainstorming-skill
+claude plugin install imagination-brainstorming@djfksjd
+codex plugin marketplace add djfksjd/imagination-brainstorming-skill
+codex plugin add imagination-brainstorming@djfksjd
 ```
 
-## Evaluation
+## Scope
 
-`evals/` compares the skill with a strong plain-prompt concept-development
-control. Judges rate decision fit, causal clarity, robustness, actionability,
-and which memo they would rather take into planning.
+Use this skill when a direction, shortlist winner or rough concept already
+exists. For initial divergence, use
+[Imagination Engine](https://github.com/djfksjd/imagination-engine-skill).
+The workshop deliberately stops before implementation.
 
-After adding the constraint preflight, a fresh 2026-07-29 `gpt-5.4`
-confirmation preferred the skill 25 to 5 (83.3%, 95% Wilson interval
-66.4–92.7%). Treatment-minus-control differences were `+0.59` decision fit,
-`+0.59` causal clarity, `+0.53` robustness, and `+1.37` actionability at
-`1.15x` tokens. Configuration and limitations are recorded in
-[`evals/results/2026-07-29-gpt-5.4-confirmation-v2.json`](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json).
+## Development and legacy
 
-The blind judges were independent calls to the same model family, not human
-domain users. Implicit invocation therefore remains off pending a separate
-trigger-precision evaluation.
+```bash
+python3 -m pytest tests/ -q
+python3 evals/harness.py --help
+```
 
-## Legacy
-
-`legacy/v0.3.0/` preserves the previous runtime, examples, scripts, translated
-documentation, and 570 regression tests. Those tests establish artefact
-consistency, not concept quality.
+The former deck-and-gate workflow is preserved under
+[`legacy/v0.3.0/`](legacy/v0.3.0/) for research only and is never loaded at
+runtime. MIT licensed.
