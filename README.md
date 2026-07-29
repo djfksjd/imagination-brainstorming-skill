@@ -1,6 +1,6 @@
 # Imagination Brainstorming
 
-Imagination Brainstorming v0.4 is a small experimental **concept workshop**. It
+Imagination Brainstorming v0.4.1 is a small experimental **concept workshop**. It
 starts after a direction has been chosen and helps that idea survive its
 assumptions, trade-offs, ordinary operation, and native failure mode.
 
@@ -48,12 +48,12 @@ and accept outstanding duties instead of composing a report at the end.
 control. Judges rate decision fit, causal clarity, robustness, actionability,
 and which memo they would rather take into planning.
 
-In the 2026-07-29 `gpt-5.4` confirmation, the skill was preferred 29 to 1
-(96.7%, 95% Wilson interval 83.3–99.4%). Treatment-minus-control differences
-were `+0.71` decision fit, `+0.78` causal clarity, `+1.02` robustness, and
-`+1.15` actionability at `1.13x` tokens. Configuration and limitations are
-recorded in
-[`evals/results/2026-07-29-gpt-5.4-confirmation.json`](evals/results/2026-07-29-gpt-5.4-confirmation.json).
+After adding the constraint preflight, a fresh 2026-07-29 `gpt-5.4`
+confirmation preferred the skill 25 to 5 (83.3%, 95% Wilson interval
+66.4–92.7%). Treatment-minus-control differences were `+0.59` decision fit,
+`+0.59` causal clarity, `+0.53` robustness, and `+1.37` actionability at
+`1.15x` tokens. Configuration and limitations are recorded in
+[`evals/results/2026-07-29-gpt-5.4-confirmation-v2.json`](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json).
 
 The blind judges were independent calls to the same model family, not human
 domain users. Implicit invocation therefore remains off pending a separate
