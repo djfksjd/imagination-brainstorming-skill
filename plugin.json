@@ -2,5 +2,10 @@
   "name": "imagination-brainstorming",
   "version": "0.4.1",
   "description": "Experimental concept workshop for pressure-testing and developing a direction the user has already selected. Runs in Claude Code and Codex.",
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Imagination Concept Workshop",
+    "shortDescription": "Pressure-test and deepen a chosen idea",
+    "defaultPrompt": "Use $imagination-brainstorming to turn this chosen direction into a coherent, pressure-tested concept."
+  }
 }
