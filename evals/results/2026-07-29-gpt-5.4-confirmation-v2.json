@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-29",
+  "evaluation": "preregistered_holdout_after_constraint_preflight",
+  "verdict": "pass",
+  "runtime_commit": "fc565175eee6104ddbcfa77098b80a880aa44829",
+  "configuration": {
+    "model": "gpt-5.4",
+    "reasoning": "medium",
+    "briefs": 6,
+    "languages": ["en", "ko"],
+    "runs_per_condition_per_brief": 5,
+    "blind_ai_judges": 5,
+    "control": "strong_plain_prompt",
+    "seed": "brainstorming-v041-confirm-20260729"
+  },
+  "evidence": {
+    "treatment_wins": 25,
+    "control_wins": 5,
+    "ties": 0,
+    "treatment_win_rate": 0.8333,
+    "wilson_95": [0.6644, 0.9266],
+    "mean_treatment_minus_control": {
+      "decision_fit": 0.5867,
+      "causal_clarity": 0.5933,
+      "robustness": 0.5267,
+      "actionability": 1.3667
+    },
+    "mean_cost_ratio": {
+      "total_tokens": 1.1520,
+      "wall_seconds": 1.6053
+    }
+  },
+  "integrity": {
+    "briefs_sha256": "c2a6be1cb07a1b06c76dd25a2fc9577182f4b08241cf2c37f402add10d09dc56",
+    "outputs_sha256": "225a4707e620d9098374052d63c87881ec83ea76c6b228d70c85d398e3e05ad1",
+    "votes_sha256": "45ce86e8769defb415ded829426e5971624c7d53b77f2a4b9dbdb1172b015b5c"
+  },
+  "limitations": [
+    "Judges were independent calls to the same model family, not human domain users.",
+    "Functional-equivalence preflight reduced but did not eliminate every ambiguous exclusion miss.",
+    "A user-selected direction remains a required boundary between generation and development."
+  ]
+}

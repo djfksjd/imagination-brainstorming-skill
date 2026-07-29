@@ -1,9 +1,4 @@
-# imagination-brainstorming unit tests
-#
-# Offline only. The scripts have no network calls, no API keys and no runtime
-# dependencies beyond the Python 3 standard library, so CI needs nothing but
-# pytest. Deck integrity, deal determinism, all three gates, and the
-# adversarial-review regressions are covered.
+# imagination-brainstorming repository and offline evaluation-harness tests
 name: tests
 
 on:

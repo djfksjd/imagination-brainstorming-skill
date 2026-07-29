@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-29",
+  "evaluation": "preregistered_holdout",
+  "verdict": "pass",
+  "runtime_commit": "a71cab5924330ba520ba0b0e6f79aa1f035bb754",
+  "configuration": {
+    "model": "gpt-5.4",
+    "reasoning": "medium",
+    "briefs": 6,
+    "languages": ["en", "ko"],
+    "runs_per_condition_per_brief": 5,
+    "blind_ai_judges": 5,
+    "control": "strong_plain_prompt",
+    "seed": "brainstorming-v04-confirm-20260729"
+  },
+  "evidence": {
+    "treatment_wins": 29,
+    "control_wins": 1,
+    "ties": 0,
+    "treatment_win_rate": 0.9667,
+    "wilson_95": [0.8333, 0.9941],
+    "mean_treatment_minus_control": {
+      "decision_fit": 0.7067,
+      "causal_clarity": 0.7800,
+      "robustness": 1.0200,
+      "actionability": 1.1467
+    },
+    "mean_cost_ratio": {
+      "total_tokens": 1.1267,
+      "wall_seconds": 1.5329
+    }
+  },
+  "integrity": {
+    "briefs_sha256": "87840b6ce765e6f9ac1b61f3f78d3c0ac99d74bdf31e24ec9272386290dd4f2a",
+    "outputs_sha256": "4c77f654cdb3d79121006a2cc8cad053ac725f7f02c65e5c700c7ad268ef534f",
+    "votes_sha256": "2b87e5ced5e0c66136415fe396a461408e27c88f79c5adb76b8ab8238506d022"
+  },
+  "limitations": [
+    "Judges were independent calls to the same model family, not human domain users.",
+    "The result supports developing a selected direction on the tested task distribution, not initial ideation.",
+    "Raw holdout artifacts remain outside the repository to avoid contaminating future tests."
+  ]
+}

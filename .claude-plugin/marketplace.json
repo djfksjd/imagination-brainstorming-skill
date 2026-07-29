@@ -12,7 +12,7 @@
     {
       "name": "imagination-brainstorming",
       "source": "./",
-      "description": "Collaborative idea development that refuses to converge on the obvious — premise interrogation, a ban contract signed with the user, mutually incompatible approaches dealt from a seeded deck, and a fail-closed gate on the written concept spec."
+      "description": "Experimental concept workshop that pressure-tests and develops a direction the user has already selected."
     }
   ]
 }
