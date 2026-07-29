@@ -5,8 +5,8 @@
 **Aus einer gewählten Idee wird ein Konzept, das der Realität standhält.**
 
 [![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-db2777)
-![Präferenz](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![Version](https://img.shields.io/badge/version-0.4.2-db2777)
+![Präferenz](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![Lizenz](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -39,11 +39,11 @@ laufender Arbeit, eigenem Fehlermodus, Widerlegung und nächster Entscheidung.
 
 | Kennzahl | Gegenüber starkem Prompt |
 |---|---:|
-| Präferenz für die Planung | **25–5 (83,3 %)** |
+| Präferenz für die Planung | **45–5 (90,0 %)** |
 | Umsetzbarkeit | **+1,37** |
-| Entscheidungspassung | **+0,59** |
-| Kausale Klarheit | **+0,59** |
-| Robustheit | **+0,53** |
+| Entscheidungspassung | **+0,95** |
+| Kausale Klarheit | **+0,71** |
+| Robustheit | **+0,82** |
 
 Das ist ein Modellrichter-Ergebnis aus einem vorregistrierten Blindtest, keine
 universelle Garantie.

@@ -7,8 +7,8 @@
 Codex와 Claude Code를 위한 집중형 컨셉 워크숍입니다.
 
 [![테스트](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![버전](https://img.shields.io/badge/version-0.4.1-db2777)
-![선호도](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![버전](https://img.shields.io/badge/version-0.4.2-db2777)
+![선호도](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![라이선스](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -64,17 +64,17 @@ $imagination-brainstorming을 사용해서 이 선택안을 발전시켜 줘. �
 
 | 지표 | 스킬 결과 − 일반 프롬프트 |
 |---|---:|
-| 기획에 가져가고 싶은 결과 | **25 대 5 (83.3%)** |
+| 기획에 가져가고 싶은 결과 | **45 대 5 (90.0%)** |
 | 실행 가능성 | **+1.37** |
-| 의사결정 적합성 | **+0.59** |
-| 인과적 명료성 | **+0.59** |
-| 견고성 | **+0.53** |
-| 토큰 비용 | `1.15배` |
+| 의사결정 적합성 | **+0.95** |
+| 인과적 명료성 | **+0.71** |
+| 견고성 | **+0.82** |
+| 토큰 비용 | `1.14배` |
 
-선호도의 95% Wilson 구간은 66.4–92.7%입니다. 같은 모델 계열의 독립
+선호도의 95% Wilson 구간은 78.6–95.7%입니다. 같은 모델 계열의 독립
 호출이 심사했으므로 사람 도메인 평가를 대신하지 않습니다. 자세한 내용은
 [`evals/README.md`](evals/README.md)와
-[고정 결과](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json)를
+[고정 결과](evals/results/2026-07-30-gpt-5.4-confirmation-v042.json)를
 참조하세요.
 
 ## 단독 설치

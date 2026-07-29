@@ -5,8 +5,8 @@
 **Convierte una idea elegida en un concepto capaz de resistir la realidad.**
 
 [![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![Versión](https://img.shields.io/badge/version-0.4.1-db2777)
-![Preferencia](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![Versión](https://img.shields.io/badge/version-0.4.2-db2777)
+![Preferencia](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![Licencia](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -39,11 +39,11 @@ uso real, trabajo recurrente, fallo propio, falsador y siguiente decisión.
 
 | Métrica | Frente a un prompt fuerte |
 |---|---:|
-| Preferencia para planificación | **25–5 (83,3 %)** |
+| Preferencia para planificación | **45–5 (90,0 %)** |
 | Aplicabilidad | **+1,37** |
-| Ajuste decisorio | **+0,59** |
-| Claridad causal | **+0,59** |
-| Robustez | **+0,53** |
+| Ajuste decisorio | **+0,95** |
+| Claridad causal | **+0,71** |
+| Robustez | **+0,82** |
 
 Es un resultado de jueces modelo en una prueba ciega prerregistrada, no una
 garantía universal.

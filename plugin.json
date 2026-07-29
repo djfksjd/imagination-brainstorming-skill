@@ -1,6 +1,6 @@
 {
   "name": "imagination-brainstorming",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Experimental concept workshop for pressure-testing and developing a direction the user has already selected. Runs in Claude Code and Codex.",
   "skills": "./skills/",
   "interface": {

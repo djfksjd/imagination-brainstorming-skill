@@ -7,8 +7,8 @@
 A focused concept workshop for Codex and Claude Code.
 
 [![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-db2777)
-![Preference](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![Version](https://img.shields.io/badge/version-0.4.2-db2777)
+![Preference](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![License](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -66,17 +66,17 @@ In a fresh preregistered blind comparison against a strong plain prompt:
 
 | Metric | Treatment minus control |
 |---|---:|
-| Planning preference | **25–5 (83.3%)** |
+| Planning preference | **45–5 (90.0%)** |
 | Actionability | **+1.37** |
-| Decision fit | **+0.59** |
-| Causal clarity | **+0.59** |
-| Robustness | **+0.53** |
-| Token cost | `1.15×` |
+| Decision fit | **+0.95** |
+| Causal clarity | **+0.71** |
+| Robustness | **+0.82** |
+| Token cost | `1.14×` |
 
-The 95% Wilson interval for preference was 66.4–92.7%. Judges were independent
+The 95% Wilson interval for preference was 78.6–95.7%. Judges were independent
 calls from the same model family rather than human domain users. See
 [`evals/README.md`](evals/README.md) and the
-[frozen result](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json).
+[frozen result](evals/results/2026-07-30-gpt-5.4-confirmation-v042.json).
 
 ## Standalone install
 

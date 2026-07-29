@@ -13,8 +13,10 @@ has already selected. It does not test initial idea generation.
 - Run both conditions on the same brief and selected direction.
 - Use five independent runs per brief for confirmation.
 
-Use `briefs.dev.jsonl` for iteration. Keep the real confirmation set outside
-the repository until the design and rule are frozen.
+Use `briefs.dev.jsonl` for broad iteration and
+`briefs.preflight-dev.jsonl` for functional-equivalence and proportional-repair
+stress tests. Keep the real confirmation set outside the repository until the
+design and rule are frozen.
 
 ## Output rows
 
@@ -74,5 +76,7 @@ After unblinding, archive the briefs, outputs, packet, answer key, votes, report
 and diagnostics together with hashes. A revealed confirmation set is retired;
 never tune on it or reuse it as a holdout.
 
-Change only one workshop intervention per development experiment. Keep it only
-when it improves the result without breaking fit, actionability, or cost.
+Change only one workshop intervention per development experiment. Treat the
+proportional functional-equivalence preflight as the confirmed baseline. Keep a
+new intervention only when it improves the result without breaking fit,
+actionability, or cost.

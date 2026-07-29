@@ -5,8 +5,8 @@
 **選んだアイデアを、現実に耐えるコンセプトへ。**
 
 [![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-db2777)
-![Preference](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![Version](https://img.shields.io/badge/version-0.4.2-db2777)
+![Preference](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![License](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -37,11 +37,11 @@ $imagination-brainstorming を使ってこの案を発展させ、最初の利�
 
 | 指標 | 強い通常プロンプトとの差 |
 |---|---:|
-| 計画に持ち込みたい結果 | **25–5 (83.3%)** |
+| 計画に持ち込みたい結果 | **45–5 (90.0%)** |
 | 実行可能性 | **+1.37** |
-| 意思決定への適合性 | **+0.59** |
-| 因果的明瞭さ | **+0.59** |
-| 頑健性 | **+0.53** |
+| 意思決定への適合性 | **+0.95** |
+| 因果的明瞭さ | **+0.71** |
+| 頑健性 | **+0.82** |
 
 事前登録したブラインド比較のモデル審査結果であり、普遍的な優位を保証する
 ものではありません。

@@ -6,7 +6,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 SKILL_DIR = REPO / "skills" / "imagination-brainstorming"
 SKILL = SKILL_DIR / "SKILL.md"
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 README_NAMES = {
     "README.md",
     "README.ko.md",
@@ -59,6 +59,14 @@ def test_implicit_invocation_stays_disabled_during_incubation():
     assert "$imagination-brainstorming" in metadata
 
 
+def test_constraint_preflight_is_functional_and_proportionate():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "by function, not label" in text
+    assert "under another name, owner, location, or scale" in text
+    assert "develop a smallest repair conditionally" in text
+    assert "keep that component provisional" in text
+
+
 def test_versions_and_descriptions_are_synchronized():
     manifests = [
         REPO / "plugin.json",
@@ -81,8 +89,8 @@ def test_readmes_cover_all_supported_languages():
     for name in README_NAMES:
         text = (REPO / name).read_text(encoding="utf-8")
         assert all(f"]({target})" in text for target in README_NAMES)
-        assert "0.4.1" in text
-        assert "25" in text
+        assert "0.4.2" in text
+        assert "45" in text
 
 
 def test_development_briefs_start_from_selected_directions():
@@ -100,6 +108,21 @@ def test_development_briefs_start_from_selected_directions():
         "selected direction" in row["prompt"].lower()
         or "선택한 방향" in row["prompt"]
         for row in rows
+    )
+
+    preflight_rows = [
+        json.loads(line)
+        for line in (REPO / "evals" / "briefs.preflight-dev.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip()
+    ]
+    assert len(preflight_rows) >= 16
+    assert len({row["id"] for row in preflight_rows}) == len(preflight_rows)
+    assert all(
+        "selected direction" in row["prompt"].lower()
+        or "선택한 방향" in row["prompt"]
+        for row in preflight_rows
     )
 
 
