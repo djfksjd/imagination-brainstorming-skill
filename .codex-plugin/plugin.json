@@ -1,7 +1,7 @@
 {
   "name": "imagination-brainstorming",
-  "version": "0.3.0",
-  "description": "Collaborative idea development that refuses to converge on the obvious — premise interrogation, a ban contract signed with the user, dealt approaches that cannot be variants, and a fail-closed gate on the concept spec.",
+  "version": "0.4.0",
+  "description": "Experimental concept workshop for pressure-testing and developing a direction the user has already selected.",
   "author": { "name": "djfksjd", "url": "https://github.com/djfksjd" },
   "homepage": "https://github.com/djfksjd/imagination-brainstorming-skill",
   "repository": "https://github.com/djfksjd/imagination-brainstorming-skill",
@@ -9,12 +9,12 @@
   "keywords": ["brainstorming", "ideation", "concept-design", "product-discovery"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "imagination-brainstorming",
-    "shortDescription": "Idea development that refuses to converge on the obvious",
-    "longDescription": "A brainstorming pipeline built on the observation that ordinary discovery questions are premise-preserving: they refine the idea the person already has. This skill asks from a deck of question families designed to expose what a brief takes for granted, then writes down the twelve answers most likely to be given and presents them to the user as exclusions rather than suggestions, together with the skeleton they share. Three approaches are dealt from disjoint reframing categories, one of which must occupy the unsafe seat and be argued at full strength, and divergence_check.py refuses a set that is really one proposal with two decoys. The chosen concept must state what it forbids. Before the user is asked to review anything, spec_gate.py validates the written spec fail-closed: premises tested, ban contract confirmed, one chosen approach, a concrete first-use scene, named neighbours, at least two honest open questions and a decision log. The skill never implements; it produces a spec and hands off.",
+    "displayName": "Imagination Concept Workshop",
+    "shortDescription": "Pressure-test and deepen a chosen idea",
+    "longDescription": "A concise concept-development skill used after a direction has been selected. It tests the load-bearing assumption, compares the idea with the strongest conventional alternative, develops the core mechanism and ordinary operation, and records the native failure mode, falsifier, nearest existing approaches, and open decisions. It produces a decision artifact and stops before implementation.",
     "developerName": "djfksjd",
     "category": "Productivity",
-    "capabilities": ["Bash", "Read", "Write"],
+    "capabilities": ["Read", "Write"],
     "websiteURL": "https://github.com/djfksjd/imagination-brainstorming-skill"
   }
 }
