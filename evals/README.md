@@ -13,8 +13,10 @@ has already selected. It does not test initial idea generation.
 - Run both conditions on the same brief and selected direction.
 - Use five independent runs per brief for confirmation.
 
-Use `briefs.dev.jsonl` for iteration. Keep the real confirmation set outside
-the repository until the design and rule are frozen.
+Use `briefs.dev.jsonl` for broad iteration and
+`briefs.preflight-dev.jsonl` for functional-equivalence and proportional-repair
+stress tests. Keep the real confirmation set outside the repository until the
+design and rule are frozen.
 
 ## Output rows
 
@@ -58,6 +60,7 @@ python3 evals/harness.py score \
   --key /path/to/answer-key.jsonl \
   --outputs /path/to/outputs.jsonl \
   --report /path/to/report.json \
+  --diagnostics /path/to/diagnostics.jsonl \
   --expected-judges 5
 ```
 
@@ -65,6 +68,15 @@ Use at least three blind judges per brief in development and five in
 confirmation. Repeated model runs are collapsed to one majority WANT decision
 per brief × judge before the Wilson interval is computed. Apply
 `PREREGISTRATION.md` without changing thresholds after the answer key is opened.
+The diagnostics file records each collapsed cell's run preferences, metric
+deltas, and weakest metrics. Use the control-win cells to select one workshop
+intervention at a time instead of tuning from the pooled mean alone.
 
-Change only one workshop intervention per development experiment. Keep it only
-when it improves the result without breaking fit, actionability, or cost.
+After unblinding, archive the briefs, outputs, packet, answer key, votes, report,
+and diagnostics together with hashes. A revealed confirmation set is retired;
+never tune on it or reuse it as a holdout.
+
+Change only one workshop intervention per development experiment. Treat the
+proportional functional-equivalence preflight as the confirmed baseline. Keep a
+new intervention only when it improves the result without breaking fit,
+actionability, or cost.

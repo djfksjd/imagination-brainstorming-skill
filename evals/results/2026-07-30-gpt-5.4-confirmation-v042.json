@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-30",
+  "evaluation": "preregistered_fresh_holdout_after_proportional_constraint_preflight",
+  "verdict": "pass",
+  "primary_90_percent_target": "pass",
+  "runtime_version": "0.4.2",
+  "runtime_source_sha256": "c3534c50d084ab4f2dcd303bfce97e2535d95aed0783e9197937012dd3ba30e2",
+  "configuration": {
+    "model": "gpt-5.4",
+    "reasoning": "medium",
+    "briefs": 10,
+    "languages": [
+      "en",
+      "ko"
+    ],
+    "runs_per_condition_per_brief": 5,
+    "blind_ai_judges": 5,
+    "control": "strong_plain_prompt",
+    "seed": "brain-v042-confirm-frozen-20260730"
+  },
+  "evidence": {
+    "treatment_wins": 45,
+    "control_wins": 5,
+    "ties": 0,
+    "treatment_win_rate": 0.9,
+    "wilson_95": [
+      0.7864,
+      0.9565
+    ],
+    "mean_treatment_minus_control": {
+      "decision_fit": 0.952,
+      "causal_clarity": 0.708,
+      "robustness": 0.816,
+      "actionability": 1.368
+    },
+    "mean_cost_ratio": {
+      "total_tokens": 1.141,
+      "wall_seconds": 1.4515
+    }
+  },
+  "integrity": {
+    "briefs_sha256": "4def267ad605500d34d44ca594f84b2316cec788a01f5b70ede3d89a769db5be",
+    "preregistration_sha256": "b172ecf19db5c703b7d2bdf126feed11080553b1b5c7504cb0ac66d1b064738a",
+    "outputs_sha256": "ef316d1d1c7cd7f802a6d5b92a851165781ce54a72926cefef98a1a5b84c12ee",
+    "packet_sha256": "f11f7d95adbfa3c389a853cfd221697afbb9a0fe195b68417b608795966c1b76",
+    "answer_key_sha256": "8daf1840bb303bd91f86a69f351927141f74770daf7488af98cf1cf5fb04c66c",
+    "votes_sha256": "c7138192b59fd3a8d2a0e5733f78b2cf730e1351ca075f923c3662eb61e642e9",
+    "report_sha256": "c2d73d0cb97019cb12e846d61ab029073bfe3469809cf125c4f78a17e535c219",
+    "diagnostics_sha256": "5abcf6001b08031c14d73fc60679ae7546dccbd18ca359b2c6545a8f23ada180"
+  },
+  "limitations": [
+    "Judges were independent calls to the same model family, not human domain users.",
+    "The 90.0% point estimate is not a guarantee for every future selected direction.",
+    "The 95% Wilson interval was 78.6–95.7%; the point target passed while its lower bound did not establish a universal 90% rate.",
+    "Nine briefs favored treatment unanimously; one receipt-boundary brief favored control unanimously."
+  ]
+}

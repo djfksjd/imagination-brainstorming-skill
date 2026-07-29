@@ -5,8 +5,8 @@
 **把已选创意变成经得住现实检验的概念。**
 
 [![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-db2777)
-![Preference](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![Version](https://img.shields.io/badge/version-0.4.2-db2777)
+![Preference](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![License](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -38,11 +38,11 @@ Imagination Brainstorming 在 **方向已经选定后** 开始。它会在实现
 
 | 指标 | 相对强普通提示词 |
 |---|---:|
-| 带入规划的偏好 | **25–5（83.3%）** |
+| 带入规划的偏好 | **45–5（90.0%）** |
 | 可执行性 | **+1.37** |
-| 决策契合度 | **+0.59** |
-| 因果清晰度 | **+0.59** |
-| 稳健性 | **+0.53** |
+| 决策契合度 | **+0.95** |
+| 因果清晰度 | **+0.71** |
+| 稳健性 | **+0.82** |
 
 这是预注册盲测中的模型评审结果，并不保证普遍占优。
 

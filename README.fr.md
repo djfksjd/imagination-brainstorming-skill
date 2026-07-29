@@ -5,8 +5,8 @@
 **Transformer une idée choisie en concept capable d’affronter le réel.**
 
 [![Tests](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-db2777)
-![Préférence](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![Version](https://img.shields.io/badge/version-0.4.2-db2777)
+![Préférence](https://img.shields.io/badge/blind_preference-90.0%25-16a34a)
 ![Licence](https://img.shields.io/badge/license-MIT-0f766e)
 
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
@@ -39,11 +39,11 @@ usage réel, le travail récurrent, l’échec propre, le falsificateur et la pr
 
 | Mesure | Face à un prompt fort |
 |---|---:|
-| Préférence pour la planification | **25–5 (83,3 %)** |
+| Préférence pour la planification | **45–5 (90,0 %)** |
 | Applicabilité | **+1,37** |
-| Adéquation décisionnelle | **+0,59** |
-| Clarté causale | **+0,59** |
-| Robustesse | **+0,53** |
+| Adéquation décisionnelle | **+0,95** |
+| Clarté causale | **+0,71** |
+| Robustesse | **+0,82** |
 
 Résultat de juges modèles dans un test aveugle préenregistré, sans garantie
 universelle.
