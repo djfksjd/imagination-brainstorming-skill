@@ -4,6 +4,16 @@ Imagination Brainstorming v0.4.1은 사용자가 방향을 고른 뒤 시작하�
 실험 **컨셉 워크숍**입니다. 선택한 아이디어의 전제, 트레이드오프, 반복
 운영, 고유한 실패 모드를 검토해 구현 전 의사결정 문서로 발전시킵니다.
 
+## 권장 통합 플러그인
+
+대부분의 사용자는 [`djfksjd/imagination`](https://github.com/djfksjd/imagination)을
+설치하고 `$imagination`만 호출하는 방식을 권장합니다. 통합 플러그인이
+`imagination-engine`으로 아이디어를 제시하고 사용자 선택을 기다린 뒤,
+다음 턴에 선택한 방향을 이 워크숍으로 연결합니다.
+
+이미 선택한 방향이 있거나 워크숍을 독립적으로 평가하려면 이 저장소를 단독
+설치하면 됩니다.
+
 초기 아이디어 생성은 더 이상 담당하지 않습니다. 발산에는
 `imagination-engine`을 사용하고, 선택한 방향을 깊게 만들 때 이 스킬을
 사용합니다.
@@ -28,7 +38,7 @@ Imagination Brainstorming v0.4.1은 사용자가 방향을 고른 뒤 시작하�
 평가 기간에는 자동 실행하지 않습니다. 선택한 방향과 함께
 `$imagination-brainstorming`을 명시 호출합니다.
 
-## 설치
+## 단독 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/djfksjd/imagination-brainstorming-skill/main/install.sh | bash

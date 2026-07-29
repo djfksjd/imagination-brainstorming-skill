@@ -4,6 +4,16 @@ Imagination Brainstorming v0.4.1 is a small experimental **concept workshop**. I
 starts after a direction has been chosen and helps that idea survive its
 assumptions, trade-offs, ordinary operation, and native failure mode.
 
+## Recommended combined plugin
+
+Most users should install [`djfksjd/imagination`](https://github.com/djfksjd/imagination)
+and invoke `$imagination`. It generates a portfolio with
+`imagination-engine`, waits for the user to choose, then routes the selected
+direction into this workshop on the next turn.
+
+Install this standalone repository when you already have a selected direction
+or need to evaluate the workshop independently.
+
 It no longer tries to generate the initial idea. For divergent ideation, use
 `imagination-engine`; use this skill to deepen the selected direction before
 implementation.
@@ -28,7 +38,7 @@ loses to the conventional alternative, the skill says so.
 Implicit invocation is disabled during evaluation. Invoke
 `$imagination-brainstorming` explicitly and provide the chosen direction.
 
-## Install
+## Standalone install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/djfksjd/imagination-brainstorming-skill/main/install.sh | bash
