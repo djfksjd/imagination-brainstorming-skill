@@ -1,42 +1,81 @@
-# Imagination Brainstorming
+<div align="center">
 
-Imagination Brainstorming v0.4.1은 사용자가 방향을 고른 뒤 시작하는 최소형
-실험 **컨셉 워크숍**입니다. 선택한 아이디어의 전제, 트레이드오프, 반복
-운영, 고유한 실패 모드를 검토해 구현 전 의사결정 문서로 발전시킵니다.
+# ◇ Imagination Brainstorming
 
-## 권장 통합 플러그인
+**선택한 아이디어를 현실을 견디는 컨셉으로.**
 
-대부분의 사용자는 [`djfksjd/imagination`](https://github.com/djfksjd/imagination)을
-설치하고 `$imagination`만 호출하는 방식을 권장합니다. 통합 플러그인이
-`imagination-engine`으로 아이디어를 제시하고 사용자 선택을 기다린 뒤,
-다음 턴에 선택한 방향을 이 워크숍으로 연결합니다.
+Codex와 Claude Code를 위한 집중형 컨셉 워크숍입니다.
 
-이미 선택한 방향이 있거나 워크숍을 독립적으로 평가하려면 이 저장소를 단독
-설치하면 됩니다.
+[![테스트](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/djfksjd/imagination-brainstorming-skill/actions/workflows/tests.yml)
+![버전](https://img.shields.io/badge/version-0.4.1-db2777)
+![선호도](https://img.shields.io/badge/blind_preference-83.3%25-16a34a)
+![라이선스](https://img.shields.io/badge/license-MIT-0f766e)
 
-초기 아이디어 생성은 더 이상 담당하지 않습니다. 발산에는
-`imagination-engine`을 사용하고, 선택한 방향을 깊게 만들 때 이 스킬을
-사용합니다.
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português (Brasil)](README.pt-BR.md)
 
-이전의 질문 덱, ban contract, 랜덤 frame, JSON sidecar, fail-closed gate는
-[`legacy/v0.3.0/`](legacy/v0.3.0/)에 연구 기록으로 보존했으며 런타임에서
-로드하지 않습니다.
+</div>
 
-## 하는 일
+---
 
-- 아이디어의 가장 중요한 전제를 찾습니다.
-- 가장 강한 일반적 대안과 비교합니다.
-- 핵심 메커니즘과 실제 사용 장면을 구체화합니다.
-- 의도적으로 하지 않는 것과 그 비용을 밝힙니다.
-- 반복 운영과 예외 처리를 설계합니다.
-- 고유한 실패 모드, 대응, 반증 조건을 씁니다.
-- 가까운 기존 접근과 중요한 열린 결정을 기록합니다.
+> [!TIP]
+> **대부분의 사용자는 통합 [Imagination](https://github.com/djfksjd/imagination)을
+> 권장합니다.** Engine이 방향을 만들고 사용자 선택을 기다린 뒤 선택안을
+> 이 워크숍으로 연결합니다.
 
-런타임 스크립트나 절대 자기 점수를 사용하지 않습니다. 선택한 아이디어가
-일반적 대안보다 못하면 그대로 말합니다.
+Imagination Brainstorming은 **방향을 고른 뒤** 시작합니다. 구현 전에
+아이디어를 목표, 제약, 가장 강한 대안, 반복 운영과 고유한 실패 방식에
+대입해 검증합니다.
 
-평가 기간에는 자동 실행하지 않습니다. 선택한 방향과 함께
-`$imagination-brainstorming`을 명시 호출합니다.
+```mermaid
+flowchart LR
+    A[선택한 방향] --> B[제약 사전검사]
+    B --> C[압력 테스트]
+    C --> D[의사결정 가능한 컨셉]
+    D --> E{다음 결정}
+```
+
+## 사용해 보기
+
+```text
+$imagination-brainstorming을 사용해서 이 선택안을 발전시켜 줘. 첫 실제
+사용, 반복 운영 부담, 고유 실패 방식, 반증 조건과 다음 결정을 보여 줘.
+```
+
+선택안이 브리프를 은밀히 위반하거나 더 단순한 대안보다 못하면, 그 사실을
+숨기고 다듬지 않고 명확히 알립니다.
+
+## 검토하는 항목
+
+| 관점 | 질문 |
+|---|---|
+| 제약 사전검사 | 제외한 메커니즘이 이름만 바꿔 돌아왔는가? |
+| 핵심 전제 | 틀리면 아이디어 전체가 무너지는 믿음은 무엇인가? |
+| 일반적 대안 | 추가 복잡성을 감수할 이유가 있는가? |
+| 핵심 메커니즘 | 어떤 관찰 가능한 원인이 결과를 바꾸는가? |
+| 지루한 절반 | 반복 업무, 대기열, 예외와 유지보수는 누가 맡는가? |
+| 고유 실패 | 정의 메커니즘 때문에 어떻게 실패하는가? |
+| 반증 조건 | 어떤 결과가 나오면 중단하거나 방향을 바꿔야 하는가? |
+
+결과는 간결한 컨셉 메모이며 코드, 스캐폴딩, 구현 계획은 만들지 않습니다.
+
+## 측정 결과
+
+강한 일반 프롬프트와 새 사전 등록 블라인드 비교 결과입니다.
+
+| 지표 | 스킬 결과 − 일반 프롬프트 |
+|---|---:|
+| 기획에 가져가고 싶은 결과 | **25 대 5 (83.3%)** |
+| 실행 가능성 | **+1.37** |
+| 의사결정 적합성 | **+0.59** |
+| 인과적 명료성 | **+0.59** |
+| 견고성 | **+0.53** |
+| 토큰 비용 | `1.15배` |
+
+선호도의 95% Wilson 구간은 66.4–92.7%입니다. 같은 모델 계열의 독립
+호출이 심사했으므로 사람 도메인 평가를 대신하지 않습니다. 자세한 내용은
+[`evals/README.md`](evals/README.md)와
+[고정 결과](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json)를
+참조하세요.
 
 ## 단독 설치
 
@@ -44,33 +83,26 @@ Imagination Brainstorming v0.4.1은 사용자가 방향을 고른 뒤 시작하�
 curl -fsSL https://raw.githubusercontent.com/djfksjd/imagination-brainstorming-skill/main/install.sh | bash
 ```
 
-사용 예:
-
-```text
-$imagination-brainstorming을 사용해 이 방향을 발전시켜 줘:
-병원 인수인계는 교대 직전에 작성하지 않고 근무 중 자동으로 조립되며,
-간호사는 미완료 업무를 수정하고 인수한다.
+```bash
+claude plugin marketplace add djfksjd/imagination-brainstorming-skill
+claude plugin install imagination-brainstorming@djfksjd
+codex plugin marketplace add djfksjd/imagination-brainstorming-skill
+codex plugin add imagination-brainstorming@djfksjd
 ```
 
-## 평가
+## 사용 범위
 
-`evals/`에서 강한 일반 프롬프트 기반 컨셉 개발과 블라인드 비교합니다.
-의사결정 적합성, 인과적 명료성, 견고성, 실행 가능성, 계획 단계로 가져가고
-싶은 문서를 평가합니다.
+선택한 방향, 최종 후보 또는 발전시킬 초기 컨셉이 있을 때 사용합니다. 초기
+발산에는 [Imagination Engine](https://github.com/djfksjd/imagination-engine-skill)을
+사용하세요. 이 워크숍은 의도적으로 구현 전에 멈춥니다.
 
-제약 사전점검을 추가한 뒤 새로 만든 2026-07-29 `gpt-5.4` 확인
-세트에서는 스킬 결과가 25 대 5로 선호됐고(83.3%, 95% Wilson 구간
-66.4–92.7%), 의사결정 적합성 `+0.59`, 인과 명료성 `+0.59`, 견고성
-`+0.53`, 실행 가능성 `+1.37`을 기록했습니다. 토큰 비용은 일반
-프롬프트의 `1.15배`였습니다. 전체 설정과 한계는
-[`evals/results/2026-07-29-gpt-5.4-confirmation-v2.json`](evals/results/2026-07-29-gpt-5.4-confirmation-v2.json)에
-기록했습니다.
+## 개발과 이전 버전
 
-심사자가 서로 독립된 호출이지만 같은 모델 계열이므로 사람 평가를 대신하지는
-않습니다. 자동 실행은 별도 트리거 정밀도 검증 전까지 꺼 두고 명시 호출합니다.
+```bash
+python3 -m pytest tests/ -q
+python3 evals/harness.py --help
+```
 
-## 이전 버전
-
-`legacy/v0.3.0/`에는 이전 런타임, 예제, 스크립트, 번역 문서와 570개 회귀
-테스트가 보존되어 있습니다. 이 테스트는 산출물 일관성을 검증하지만 컨셉
-품질을 검증하지는 않습니다.
+이전 덱·게이트 워크플로는 연구 목적으로만
+[`legacy/v0.3.0/`](legacy/v0.3.0/)에 보존되며 런타임에서는 로드되지
+않습니다. MIT 라이선스입니다.
