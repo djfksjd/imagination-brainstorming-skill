@@ -46,8 +46,18 @@ and accept outstanding duties instead of composing a report at the end.
 
 `evals/` compares the skill with a strong plain-prompt concept-development
 control. Judges rate decision fit, causal clarity, robustness, actionability,
-and which memo they would rather take into planning. The skill remains
-explicit-only until the frozen holdout rule passes.
+and which memo they would rather take into planning.
+
+In the 2026-07-29 `gpt-5.4` confirmation, the skill was preferred 29 to 1
+(96.7%, 95% Wilson interval 83.3–99.4%). Treatment-minus-control differences
+were `+0.71` decision fit, `+0.78` causal clarity, `+1.02` robustness, and
+`+1.15` actionability at `1.13x` tokens. Configuration and limitations are
+recorded in
+[`evals/results/2026-07-29-gpt-5.4-confirmation.json`](evals/results/2026-07-29-gpt-5.4-confirmation.json).
+
+The blind judges were independent calls to the same model family, not human
+domain users. Implicit invocation therefore remains off pending a separate
+trigger-precision evaluation.
 
 ## Legacy
 
