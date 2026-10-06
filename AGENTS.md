@@ -1,6 +1,6 @@
 # Repository guide
 
-The runtime skill is `skills/imagination-brainstorming/SKILL.md`. It begins
+The runtime skill is `skills/imagination-octo-brainstorming/SKILL.md`. It begins
 after a user has selected a direction; initial ideation belongs elsewhere.
 
 - Keep the runtime high-freedom and concise.

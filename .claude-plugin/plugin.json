@@ -1,11 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "imagination-brainstorming",
-  "version": "0.4.2",
+  "name": "imagination-octo-brainstorming",
+  "version": "0.4.3",
   "description": "Experimental concept workshop for pressure-testing and developing a direction the user has already selected. During evaluation, use only when explicitly invoked. Produces a decision artifact and stops before implementation.",
   "author": { "name": "djfksjd", "url": "https://github.com/djfksjd" },
-  "homepage": "https://github.com/djfksjd/imagination-brainstorming-skill",
-  "repository": "https://github.com/djfksjd/imagination-brainstorming-skill",
+  "homepage": "https://github.com/djfksjd/imagination-octo-brainstorming",
+  "repository": "https://github.com/djfksjd/imagination-octo-brainstorming",
   "license": "MIT",
   "keywords": ["brainstorming", "ideation", "concept-design", "product-discovery", "claude-skill"],
   "skills": "./skills/"

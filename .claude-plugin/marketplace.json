@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "djfksjd",
+  "name": "imagination-octo-brainstorming",
   "owner": {
     "name": "djfksjd",
     "url": "https://github.com/djfksjd"
@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "imagination-brainstorming",
+      "name": "imagination-octo-brainstorming",
       "source": "./",
       "description": "Experimental concept workshop that pressure-tests and develops a direction the user has already selected."
     }
