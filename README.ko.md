@@ -18,7 +18,7 @@ Codex와 Claude Code를 위한 집중형 컨셉 워크숍입니다.
 ---
 
 > [!TIP]
-> **대부분의 사용자는 통합 [Imagination](https://github.com/djfksjd/imagination)을
+> **대부분의 사용자는 통합 [Imagination Octo](https://github.com/djfksjd/imagination-octo)를
 > 권장합니다.** Engine이 방향을 만들고 사용자 선택을 기다린 뒤 선택안을
 > 이 워크숍으로 연결합니다.
 

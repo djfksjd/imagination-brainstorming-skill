@@ -17,7 +17,7 @@
 
 > [!TIP]
 > Pour la plupart des usages, installez
-> [Imagination](https://github.com/djfksjd/imagination) : il génère les options,
+> [Imagination Octo](https://github.com/djfksjd/imagination-octo) : il génère les options,
 > attend votre choix, puis transmet l’idée retenue à cet atelier.
 
 Imagination Brainstorming commence **après le choix d’une direction**. Avant

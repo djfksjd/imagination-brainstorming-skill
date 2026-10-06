@@ -18,7 +18,7 @@ A focused concept workshop for Codex and Claude Code.
 ---
 
 > [!TIP]
-> **Most users should install [Imagination](https://github.com/djfksjd/imagination).**
+> **Most users should install [Imagination Octo](https://github.com/djfksjd/imagination-octo).**
 > It generates directions with Imagination Engine, waits for your choice, then
 > routes that selection into this workshop.
 

@@ -17,7 +17,7 @@
 
 > [!TIP]
 > Für die meisten Nutzer empfehlen wir
-> [Imagination](https://github.com/djfksjd/imagination): Es erzeugt Richtungen,
+> [Imagination Octo](https://github.com/djfksjd/imagination-octo): Es erzeugt Richtungen,
 > wartet auf deine Wahl und übergibt sie an diesen Workshop.
 
 Imagination Brainstorming beginnt **nach der Auswahl einer Richtung**. Vor der

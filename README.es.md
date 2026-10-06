@@ -17,7 +17,7 @@
 
 > [!TIP]
 > Para la mayoría recomendamos
-> [Imagination](https://github.com/djfksjd/imagination): genera direcciones,
+> [Imagination Octo](https://github.com/djfksjd/imagination-octo): genera direcciones,
 > espera tu elección y conecta la elegida con este taller.
 
 Imagination Brainstorming empieza **después de elegir una dirección**. Antes de
