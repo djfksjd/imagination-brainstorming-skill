@@ -17,7 +17,7 @@
 
 > [!TIP]
 > 大多数用户建议安装整合版
-> [Imagination](https://github.com/djfksjd/imagination)，依次完成发散、用户
+> [Imagination Octo](https://github.com/djfksjd/imagination-octo)，依次完成发散、用户
 > 选择与概念深化。
 
 Imagination Brainstorming 在 **方向已经选定后** 开始。它会在实现前检查

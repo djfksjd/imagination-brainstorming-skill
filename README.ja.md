@@ -16,7 +16,7 @@
 ---
 
 > [!TIP]
-> 通常は統合版 [Imagination](https://github.com/djfksjd/imagination) を
+> 通常は統合版 [Imagination Octo](https://github.com/djfksjd/imagination-octo) を
 > 推奨します。案の生成、ユーザー選択、本ワークショップを一つにつなぎます。
 
 Imagination Brainstorming は **方向性を選んだ後** に始まります。実装前に
