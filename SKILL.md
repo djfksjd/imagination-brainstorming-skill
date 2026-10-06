@@ -1,1 +1,1 @@
-skills/imagination-brainstorming/SKILL.md
+skills/imagination-octo-brainstorming/SKILL.md

@@ -1,21 +1,21 @@
 {
-  "name": "imagination-brainstorming",
-  "version": "0.4.2",
+  "name": "imagination-octo-brainstorming",
+  "version": "0.4.3",
   "description": "Experimental concept workshop for pressure-testing and developing a direction the user has already selected.",
   "author": { "name": "djfksjd", "url": "https://github.com/djfksjd" },
-  "homepage": "https://github.com/djfksjd/imagination-brainstorming-skill",
-  "repository": "https://github.com/djfksjd/imagination-brainstorming-skill",
+  "homepage": "https://github.com/djfksjd/imagination-octo-brainstorming",
+  "repository": "https://github.com/djfksjd/imagination-octo-brainstorming",
   "license": "MIT",
   "keywords": ["brainstorming", "ideation", "concept-design", "product-discovery"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Imagination Concept Workshop",
+    "displayName": "Imagination Octo Brainstorming",
     "shortDescription": "Pressure-test and deepen a chosen idea",
     "longDescription": "A concise concept-development skill used after a direction has been selected. It tests the load-bearing assumption, compares the idea with the strongest conventional alternative, develops the core mechanism and ordinary operation, and records the native failure mode, falsifier, nearest existing approaches, and open decisions. It produces a decision artifact and stops before implementation.",
-    "defaultPrompt": "Use $imagination-brainstorming to turn this chosen direction into a coherent, pressure-tested concept.",
+    "defaultPrompt": "Use $imagination-octo-brainstorming to turn this chosen direction into a coherent, pressure-tested concept.",
     "developerName": "djfksjd",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],
-    "websiteURL": "https://github.com/djfksjd/imagination-brainstorming-skill"
+    "websiteURL": "https://github.com/djfksjd/imagination-octo-brainstorming"
   }
 }

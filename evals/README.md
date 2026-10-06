@@ -7,7 +7,7 @@ has already selected. It does not test initial idea generation.
 
 - **Control:** use `prompts/control.md` in a clean context without this skill.
 - **Treatment:** use `prompts/treatment.md` in a clean context that can load
-  only the current `imagination-brainstorming` skill.
+  only the current `imagination-octo-brainstorming` skill.
 - Pin model, model version, temperature, reasoning setting, output budget, and
   run count before generation.
 - Run both conditions on the same brief and selected direction.

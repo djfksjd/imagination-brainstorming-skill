@@ -4,9 +4,10 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[1]
-SKILL_DIR = REPO / "skills" / "imagination-brainstorming"
+NAME = "imagination-octo-brainstorming"
+SKILL_DIR = REPO / "skills" / NAME
 SKILL = SKILL_DIR / "SKILL.md"
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 README_NAMES = {
     "README.md",
     "README.ko.md",
@@ -48,7 +49,7 @@ def test_frontmatter_has_only_name_and_description_and_narrow_trigger():
         if ":" in line
     ]
     assert keys == ["name", "description"]
-    assert "name: imagination-brainstorming" in match.group(1)
+    assert "name: imagination-octo-brainstorming" in match.group(1)
     assert "already selected" in match.group(1)
     assert "Not for initial idea generation" in match.group(1)
 
@@ -56,7 +57,7 @@ def test_frontmatter_has_only_name_and_description_and_narrow_trigger():
 def test_implicit_invocation_stays_disabled_during_incubation():
     metadata = (SKILL_DIR / "agents" / "openai.yaml").read_text(encoding="utf-8")
     assert "allow_implicit_invocation: false" in metadata
-    assert "$imagination-brainstorming" in metadata
+    assert "$imagination-octo-brainstorming" in metadata
 
 
 def test_constraint_preflight_is_functional_and_proportionate():
@@ -89,8 +90,30 @@ def test_readmes_cover_all_supported_languages():
     for name in README_NAMES:
         text = (REPO / name).read_text(encoding="utf-8")
         assert all(f"]({target})" in text for target in README_NAMES)
-        assert "0.4.2" in text
+        assert "0.4.3" in text
         assert "45" in text
+        assert f"{NAME}@{NAME}" in text
+        assert f"djfksjd/{NAME}/main/install.sh" in text
+        assert "@djfksjd" not in text
+        assert "imagination-brainstorming-skill/main" not in text
+        for logo in re.findall(r'assets/brand/[\w.-]+\.png', text):
+            assert (REPO / logo).is_file()
+
+
+def test_marketplace_id_matches_plugin_and_skill_name():
+    market = json.loads(
+        (REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
+    )
+    assert market["name"] == NAME
+    assert [plugin["name"] for plugin in market["plugins"]] == [NAME]
+    for path in (
+        REPO / "plugin.json",
+        REPO / ".claude-plugin" / "plugin.json",
+        REPO / ".codex-plugin" / "plugin.json",
+    ):
+        assert json.loads(path.read_text(encoding="utf-8"))["name"] == NAME
+    installer = (REPO / "install.sh").read_text(encoding="utf-8")
+    assert f'MARKET="{NAME}"' in installer
 
 
 def test_development_briefs_start_from_selected_directions():
